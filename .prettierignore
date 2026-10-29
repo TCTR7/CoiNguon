@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+.tools
+docs
+*.md
+package-lock.json
+.firebase
+test-results
+
+automation_test/artifacts

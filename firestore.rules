@@ -1,0 +1,89 @@
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+  function signedIn() { return request.auth != null; }
+  function memberPath(clan, uid) { return /databases/$(database)/documents/memberships/$(clan + '_' + uid); }
+  function isMember(clan) { return signedIn() && exists(memberPath(clan, request.auth.uid)); }
+  function isAdminFor(clan, uid) { return exists(memberPath(clan, uid)) && get(memberPath(clan, uid)).data.role == 'admin'; }
+  function isAdmin(clan) { return signedIn() && isAdminFor(clan, request.auth.uid); }
+  function validName(name) { return name is string && name.size() >= 2 && name.size() <= 80; }
+  function validMembership(data, id) {
+   return data.keys().hasOnly(['clanId','uid','displayName','role','joinedAt','invitationId'])
+    && data.keys().hasAll(['clanId','uid','displayName','role','joinedAt','invitationId'])
+    && data.clanId is string && data.uid is string && id == data.clanId + '_' + data.uid
+    && validName(data.displayName) && data.role in ['admin','editor','member'] && data.joinedAt == request.time;
+  }
+  function ownerBootstrap(data) {
+   let clan = getAfter(/databases/$(database)/documents/clans/$(data.clanId)).data;
+   return !exists(/databases/$(database)/documents/clans/$(data.clanId))
+    && clan.ownerUid == request.auth.uid && data.role == 'admin' && data.invitationId == null;
+  }
+  function invitationJoin(data) {
+   let before = get(/databases/$(database)/documents/invitations/$(data.invitationId)).data;
+   let after = getAfter(/databases/$(database)/documents/invitations/$(data.invitationId)).data;
+   return data.invitationId is string && before.clanId == data.clanId && before.role == data.role
+    && before.revoked == false && before.acceptedBy == null && before.expiresAt > request.time
+    && isAdminFor(data.clanId, before.createdBy) && after.acceptedBy == request.auth.uid;
+  }
+  match /clans/{clanId} {
+   allow get: if isMember(clanId);
+   allow create: if signedIn() && !clanId.matches('restore_.*') && request.resource.data.keys().hasOnly(['name','ownerUid','createdAt'])
+    && validName(request.resource.data.name) && request.resource.data.ownerUid == request.auth.uid
+    && request.resource.data.createdAt == request.time
+    && getAfter(memberPath(clanId, request.auth.uid)).data.role == 'admin';
+   allow update, delete, list: if false;
+  }
+  match /memberships/{id} {
+   allow read: if signedIn() && (resource.data.uid == request.auth.uid || isMember(resource.data.clanId));
+   allow create: if signedIn() && validMembership(request.resource.data, id)
+    && request.resource.data.uid == request.auth.uid
+    && (ownerBootstrap(request.resource.data) || invitationJoin(request.resource.data));
+   // Membership role changes and departures require the backend transaction lock.
+   allow update, delete: if false;
+  }
+  match /invitations/{token} {
+   // A signed-in recipient must know the unguessable token; directory listing requires admin.
+   allow get: if signedIn();
+   allow list: if isAdmin(resource.data.clanId);
+   allow create: if isAdmin(request.resource.data.clanId) && token.size() >= 32
+    && request.resource.data.keys().hasOnly(['clanId','clanName','role','createdBy','createdAt','expiresAt','revoked','acceptedBy'])
+    && request.resource.data.clanName == get(/databases/$(database)/documents/clans/$(request.resource.data.clanId)).data.name
+    && request.resource.data.role in ['editor','member'] && request.resource.data.createdBy == request.auth.uid
+    && request.resource.data.createdAt == request.time && request.resource.data.expiresAt is timestamp
+    && request.resource.data.expiresAt > request.time && request.resource.data.expiresAt <= request.time + duration.value(7,'d')
+    && request.resource.data.revoked == false && request.resource.data.acceptedBy == null;
+   allow update: if (isAdmin(resource.data.clanId)
+      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['revoked']) && request.resource.data.revoked == true)
+    || (signedIn() && resource.data.revoked == false && resource.data.acceptedBy == null
+      && resource.data.expiresAt > request.time && isAdminFor(resource.data.clanId, resource.data.createdBy)
+      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['acceptedBy'])
+      && request.resource.data.acceptedBy == request.auth.uid
+      && !exists(memberPath(resource.data.clanId, request.auth.uid))
+      && getAfter(memberPath(resource.data.clanId, request.auth.uid)).data.invitationId == token
+      && getAfter(memberPath(resource.data.clanId, request.auth.uid)).data.role == resource.data.role);
+   allow delete: if false;
+  }
+  match /clans/{clanId}/people/{id} { allow read: if isMember(clanId); allow write: if false; }
+  match /clans/{clanId}/relationships/{id} { allow read: if isMember(clanId); allow write: if false; }
+  match /clans/{clanId}/personLinks/{id} { allow read: if isMember(clanId); allow write: if false; }
+  match /clans/{clanId}/personRequests/{id} { allow read: if isMember(clanId) && (isAdmin(clanId) || resource.data.uid == request.auth.uid); allow write: if false; }
+  match /clans/{clanId}/anniversaryRules/{id} { allow read: if isMember(clanId); allow write: if false; }
+  match /clans/{clanId}/assignments/{id} { allow read: if isMember(clanId); allow write: if false; }
+  match /clans/{clanId}/events/{id} { allow read: if isMember(clanId); allow write: if false; }
+  match /clans/{clanId}/delegations/{id} { allow read: if isMember(clanId); allow write: if false; }
+  match /clans/{clanId}/stewardChanges/{id} { allow read: if isMember(clanId); allow write: if false; }
+  match /clans/{clanId}/joinSettings/{id} { allow read: if isAdmin(clanId); allow write: if false; }
+  match /restoreSessions/{id} { allow read, write: if false; }
+  match /clans/{clanId}/reminderJobs/{id} { allow read, write: if false; }
+  match /clans/{clanId}/reminderInbox/{id} { allow read, write: if false; }
+  match /guestTokens/{id} { allow read, write: if false; }
+  match /clans/{clanId}/invitationSettings/{id} { allow read, write: if false; }
+  match /clans/{clanId}/invitationGroups/{id} { allow read, write: if false; }
+  match /joinLinks/{id} { allow read, write: if false; }
+  match /joinRequests/{id} {
+   allow read: if signedIn() && (resource.data.uid == request.auth.uid || isAdmin(resource.data.clanId));
+   allow write: if false;
+  }
+  match /{document=**} { allow read, write: if false; }
+ }
+}

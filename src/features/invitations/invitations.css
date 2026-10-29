@@ -1,0 +1,265 @@
+.invitation-manager {
+  margin-top: 1.5rem;
+  border-top: 1px solid #d9c9aa;
+  padding-top: 1rem;
+}
+.invitation-manager > summary {
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+  padding: 0.65rem 0;
+}
+.invitation-management {
+  margin-top: 1rem;
+}
+.invitation-management h3,
+.invitation-management h4 {
+  overflow-wrap: anywhere;
+}
+.family-invitation {
+  position: relative;
+  max-width: 720px;
+  margin: 1.5rem auto;
+  padding: 2.5rem clamp(1rem, 5vw, 3rem);
+  background: #fffaf0;
+  border: 1px solid #bba47f;
+  border-radius: 4px 4px 28px 4px;
+  box-shadow: 8px 8px 0 #efe4ce;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.family-invitation:before {
+  content: '';
+  position: absolute;
+  inset: 0.5rem;
+  border: 1px solid #e0cfb0;
+  border-radius: 2px 2px 22px 2px;
+  pointer-events: none;
+}
+.invitation-crest {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 1rem;
+  border: 1px solid #9b5745;
+  border-radius: 50%;
+  color: #763e32;
+}
+.family-invitation h1,
+.family-invitation h4 {
+  font-family: Lora, serif;
+  font-size: clamp(1.7rem, 4vw, 2.5rem);
+  line-height: 1.4;
+  color: #763e32;
+  margin: 0.75rem 0 1.25rem;
+}
+.invitation-message {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.9;
+}
+.invitation-facts {
+  display: grid;
+  gap: 1.25rem;
+  margin: 1.5rem 0;
+  text-align: left;
+}
+.invitation-facts > div {
+  padding-top: 1rem;
+  border-top: 1px solid #dfd1b7;
+}
+.invitation-facts dt {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: #553f31;
+}
+.invitation-facts dd {
+  margin: 0.45rem 0 0;
+  overflow-wrap: anywhere;
+}
+.invitation-contact {
+  border-top: 1px solid #dfd1b7;
+  padding-top: 1rem;
+  white-space: pre-wrap;
+}
+.guest-invitation-page {
+  max-width: 900px;
+  margin: auto;
+}
+.local-invitation-note {
+  text-align: center;
+  color: #594e3e;
+  font-size: 0.95em;
+}
+.guest-response-panel {
+  margin: 2rem auto;
+}
+.guest-invitation-footer {
+  text-align: center;
+  margin: 2rem 0;
+}
+.invitation-share {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+  margin: 0.75rem 0;
+}
+.invitation-share label {
+  flex: 1 1 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.invitation-share input {
+  width: 100%;
+  min-width: 0;
+}
+.invitation-management input,
+.household-response input,
+.invitation-editor input {
+  max-width: 100%;
+}
+.invitation-editor {
+  padding: 1.25rem 0;
+  border-top: 1px solid #d3c4a8;
+  margin-top: 1rem;
+}
+.response-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  margin: 1rem 0;
+  line-height: 1.65;
+}
+.response-consent input {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  margin: 0.2rem 0;
+}
+.attendance-choices {
+  display: grid;
+  gap: 0.6rem;
+  border: 0;
+  padding: 0;
+  margin: 0.75rem 0;
+}
+.attendance-choices label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid #c7b698;
+  border-radius: 10px;
+  min-height: 44px;
+}
+.attendance-choices input {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.attendance-counts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.attendance-counts label {
+  min-width: 0;
+}
+.attendance-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 1.25rem 0;
+  margin: 0;
+}
+.attendance-summary > div {
+  border-bottom: 1px solid #d5c6aa;
+  padding-bottom: 0.8rem;
+}
+.attendance-summary dt {
+  line-height: 1.5;
+}
+.attendance-summary dd {
+  font:
+    600 1.9em Lora,
+    serif;
+  margin: 0.35rem 0;
+  color: #763e32;
+}
+.table-capacity {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.table-capacity input {
+  width: 100px;
+}
+.household-list {
+  display: grid;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+.household-row {
+  padding: 1.25rem;
+  border: 1px solid #c7b698;
+  border-radius: 12px;
+  background: #fffdf8;
+  overflow-wrap: anywhere;
+}
+.household-row h4 {
+  margin: 0;
+}
+.manager-response-editor {
+  border-top: 2px solid #9b5745;
+  padding-top: 1rem;
+}
+@media (max-width: 600px) {
+  .family-invitation {
+    padding: 1.75rem 1rem;
+    box-shadow: 4px 4px 0 #efe4ce;
+  }
+  .attendance-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .attendance-counts {
+    grid-template-columns: 1fr;
+  }
+  .household-row {
+    padding: 1rem;
+  }
+  .invitation-share .button {
+    width: 100%;
+  }
+  .invitation-management .button-row {
+    align-items: stretch;
+  }
+  .invitation-management .button {
+    white-space: normal;
+  }
+}
+
+.guest-invitation-page {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.guest-invitation-page .button {
+  white-space: normal;
+  max-width: 100%;
+}
+.household-response fieldset {
+  min-inline-size: 0;
+}
+.household-response legend {
+  max-width: 100%;
+  white-space: normal;
+}
+.attendance-choices label {
+  min-width: 0;
+}

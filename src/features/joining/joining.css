@@ -1,0 +1,87 @@
+.join-page {
+  max-width: 1000px;
+  margin: auto;
+}
+.join-welcome {
+  text-align: center;
+  padding: 2rem 1rem;
+  background: #f3ecdd;
+  border: 1px solid #d9c9aa;
+  border-radius: 18px;
+  margin: 1rem 0 1.5rem;
+}
+.join-welcome .icon-circle {
+  margin: auto;
+}
+.join-welcome h1 {
+  margin: 0.7rem 0;
+}
+.join-welcome h2 {
+  color: #763e32;
+}
+.join-actions {
+  text-align: center;
+  margin: 1.5rem 0;
+}
+.join-privacy {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  margin: 1.5rem 0;
+}
+.join-privacy svg {
+  flex-shrink: 0;
+}
+.join-application {
+  margin: 1.5rem 0;
+}
+.join-manager {
+  margin: 2rem 0;
+}
+.join-manager label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.join-manager input {
+  width: 100%;
+  min-width: 0;
+}
+.join-request-list {
+  display: grid;
+  gap: 1rem;
+}
+.join-request {
+  padding: 1.25rem;
+  border: 1px solid #c9b899;
+  border-radius: 12px;
+  background: #fffdf7;
+}
+.join-request h4 {
+  margin: 0;
+  font:
+    600 1.2em Lora,
+    serif;
+}
+.join-message {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.join-application .session-bar {
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .join-welcome {
+    padding: 1.25rem 0.8rem;
+  }
+  .join-request {
+    padding: 1rem;
+  }
+  .join-manager .button-row {
+    align-items: stretch;
+  }
+  .join-manager .button {
+    white-space: normal;
+  }
+}

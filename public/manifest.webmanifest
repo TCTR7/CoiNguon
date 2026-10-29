@@ -1,0 +1,19 @@
+{
+  "id": "/",
+  "name": "Cội Nguồn",
+  "short_name": "Cội Nguồn",
+  "lang": "vi",
+  "start_url": "/dong-ho",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8f5ee",
+  "theme_color": "#8c382b",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
