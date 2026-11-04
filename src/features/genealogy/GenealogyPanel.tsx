@@ -1,11 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { FamilyTree } from './FamilyTree';
+import { PhoneInvites } from '../workspace/PhoneInvites';
 import { BookOpen, List, Network, Plus, Search, ShieldCheck } from 'lucide-react';
-import {
-  descendantLayers,
-  formatFamilyDate,
-  normalizedName,
-  type FamilyPerson,
-} from '../../shared/domain/genealogy';
+import { formatFamilyDate, normalizedName, type FamilyPerson } from '../../shared/domain/genealogy';
 import { type Membership } from '../workspace/service';
 import { genealogyMutation, watchGenealogy, type GenealogyData } from './service';
 import { PersonForm } from './PersonForm';
@@ -55,17 +52,21 @@ export default function GenealogyPanel({
       ),
     [membership.clanId, membership.uid, membership.role, onAccessLost],
   );
-  const people = data?.people || [];
-  const active = people.filter((p) => !p.archived);
+  const people = useMemo(() => data?.people || [], [data]);
+  const active = useMemo(() => people.filter((p) => !p.archived), [people]);
   const selected = people.find((p) => p.id === selectedId);
-  const results = people
-    .filter(
-      (p) =>
-        p.archived === archived &&
-        (!branch || p.branch === branch) &&
-        normalizedName(p.name + ' ' + p.aliases).includes(normalizedName(search)),
-    )
-    .sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+  const results = useMemo(
+    () =>
+      people
+        .filter(
+          (p) =>
+            p.archived === archived &&
+            (!branch || p.branch === branch) &&
+            normalizedName(p.name + ' ' + p.aliases).includes(normalizedName(search)),
+        )
+        .sort((a, b) => a.name.localeCompare(b.name, 'vi')),
+    [people, archived, branch, search],
+  );
   function edit(person?: FamilyPerson) {
     setError('');
     setEditing({
@@ -167,10 +168,11 @@ export default function GenealogyPanel({
               </label>
             </div>
             {view === 'tree' && !archived ? (
-              <BranchTree
+              <FamilyTree
                 people={active}
                 relationships={data.relationships}
-                root={selected && !selected.archived ? selected.id : active[0]?.id || ''}
+                results={results}
+                selectedId={selectedId}
                 onChoose={setSelectedId}
               />
             ) : (
@@ -316,6 +318,18 @@ export default function GenealogyPanel({
                     </button>
                   </div>
                 )}
+                {membership.role === 'admin' && (
+                  <PhoneInvites
+                    key={selected.id + '_invite'}
+                    clanId={membership.clanId}
+                    personId={selected.id}
+                    canInvite={
+                      selected.lifeStatus === 'living' &&
+                      !selected.archived &&
+                      !data.links.some((l) => l.personId === selected.id)
+                    }
+                  />
+                )}
                 <RelationshipPanel
                   key={selected.id}
                   clanId={membership.clanId}
@@ -380,68 +394,5 @@ export default function GenealogyPanel({
         )
       )}
     </section>
-  );
-}
-function BranchTree({
-  people,
-  relationships,
-  root,
-  onChoose,
-}: {
-  people: FamilyPerson[];
-  relationships: GenealogyData['relationships'];
-  root: string;
-  onChoose: (id: string) => void;
-}) {
-  if (!root) return <p className="notice">Thêm hồ sơ để bắt đầu xem sơ đồ nhánh.</p>;
-  const levels = descendantLayers(root, relationships);
-  const grouped = new Map<string, FamilyPerson[]>();
-  for (const person of people) {
-    const values = levels.get(person.id);
-    if (!values) continue;
-    const label =
-      values.size === 1 ? 'Thế hệ tương đối ' + String([...values][0] + 1) : 'Chưa xác định thế hệ';
-    grouped.set(label, [...(grouped.get(label) || []), person]);
-  }
-  return (
-    <div className="live-tree">
-      <label>
-        Gốc nhánh đang xem
-        <select value={root} onChange={(e) => onChoose(e.target.value)}>
-          {people.map((p) => (
-            <option value={p.id} key={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <p className="subtle">
-        Chỉ tính thế hệ từ quan hệ cha/mẹ — con đã xác minh. Quan hệ vợ/chồng, con nuôi và chưa xác
-        minh được ghi rõ trong hồ sơ. Đây là thế hệ tương đối từ gốc đang chọn.
-      </p>
-      {[...grouped]
-        .sort(([a], [b]) => a.localeCompare(b, 'vi', { numeric: true }))
-        .map(([label, members]) => (
-          <section className="live-tree-level" key={label}>
-            <h4>{label}</h4>
-            <div>
-              {members.slice(0, 100).map((p) => (
-                <button className="tree-person" key={p.id} onClick={() => onChoose(p.id)}>
-                  <span className="avatar">{p.name.charAt(0)}</span>
-                  <strong>{p.name}</strong>
-                  <small>{p.birth.year ?? 'Chưa rõ năm sinh'}</small>
-                </button>
-              ))}
-            </div>
-            {members.length > 100 && (
-              <p className="subtle">Đang hiện 100 hồ sơ đầu; dùng tìm kiếm để xem thêm.</p>
-            )}
-          </section>
-        ))}
-      <p className="subtle">
-        {people.length - levels.size} hồ sơ ngoài nhánh hoặc chưa đủ quan hệ xác minh. Dùng danh
-        sách để tra cứu đầy đủ.
-      </p>
-    </div>
   );
 }

@@ -137,7 +137,9 @@ export function JoinManager({ clanId }: { clanId: string }) {
       {!pending.length && <p className="subtle">Chưa có yêu cầu cần duyệt.</p>}
       <div className="join-request-list">
         {pending.map((r) => {
-          const valid = available && r.linkVersion === settings?.version && r.linkExpiresAtMs > now;
+          const valid = r.privateToken
+            ? r.linkExpiresAtMs > now
+            : available && r.linkVersion === settings?.version && r.linkExpiresAtMs > now;
           return (
             <article
               className="join-request"

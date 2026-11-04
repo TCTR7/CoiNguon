@@ -122,6 +122,12 @@ test('purges a revoked membership snapshot when reconnecting; another account ca
     const guest = await guestContext.newPage();
     await new AuthPage(guest).register('Thành viên offline', { invite: new URL(link).search });
     await guest.getByRole('button', { name: 'Đồng ý tham gia', exact: true }).click();
+    await page.bringToFront();
+    await page
+      .locator('.join-request')
+      .filter({ hasText: 'Yêu cầu tham gia từ lời mời riêng' })
+      .getByRole('button', { name: 'Duyệt tham gia', exact: true })
+      .click();
     await expect(guest.getByRole('heading', { name: clan, exact: true })).toBeVisible();
     await new PreparednessPage(guest).download();
     await guest.goto('/ngoai-tuyen');
@@ -182,9 +188,10 @@ test('imports 1000 synthetic profiles, searches the downloaded copy and handles 
   await page
     .getByLabel('Dòng họ đang xem')
     .selectOption({ label: 'Khôi phục thử — Gia phả dữ liệu giả · Quản trị viên' });
+  // The selected clan's heading requires a separate Firestore server read after switching.
   await expect(
     page.getByRole('heading', { name: 'Khôi phục thử — Gia phả dữ liệu giả', exact: true }),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 15_000 });
   await page.evaluate(() => {
     Object.defineProperty(Notification, 'permission', { get: () => 'denied', configurable: true });
     Notification.requestPermission = async () => 'denied';

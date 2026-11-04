@@ -8,7 +8,7 @@ Chạy lệnh từ thư mục gốc dự án. Browser dùng Playwright TypeScrip
 automation_test/
 ├── common_setup/            # Fixture, dữ liệu giả, setup dùng chung
 ├── features/
-│   ├── auth/                # Đăng ký, đăng nhập, đăng xuất
+│   ├── auth/                # Google giả lập, số duy nhất, mời theo số, đăng xuất
 │   ├── clan_membership/     # Dòng họ, vai trò và bàn giao
 │   ├── clan_joining/        # Link chung và duyệt tham gia
 │   ├── genealogy/           # Hồ sơ và quan hệ

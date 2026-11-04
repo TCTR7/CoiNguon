@@ -1,5 +1,6 @@
 import { sameDate } from '../src/shared/domain/anniversary.ts';
-import { initializeApp } from 'firebase-admin/app';
+import { initializeApp, applicationDefault } from 'firebase-admin/app';
+import { runtime } from './config.ts';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, FieldValue, type DocumentData } from 'firebase-admin/firestore';
 import {
@@ -8,10 +9,17 @@ import {
   validateRelationship,
   type FamilyRelationship,
 } from '../src/shared/domain/genealogy.ts';
-// Deliberately fixed to emulators: there is no cloud credential or production fallback.
-process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
-process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
-const app = initializeApp({ projectId: 'demo-coinguon' }, 'genealogy-local');
+if (runtime.local) {
+  process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
+  process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
+}
+const app = initializeApp(
+  {
+    projectId: runtime.projectId,
+    ...(!runtime.local ? { credential: applicationDefault() } : {}),
+  },
+  'genealogy-local',
+);
 export const adminAuth = getAuth(app);
 export const store = getFirestore(app);
 export class ApiError extends Error {

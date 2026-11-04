@@ -202,8 +202,11 @@ export function createsAncestryCycle(
 ) {
   const children = new Map<string, string[]>();
   for (const edge of edges)
-    if (!edge.archived && edge.kind === 'parent')
-      children.set(edge.from, [...(children.get(edge.from) || []), edge.to]);
+    if (!edge.archived && edge.kind === 'parent') {
+      const row = children.get(edge.from) || [];
+      row.push(edge.to);
+      children.set(edge.from, row);
+    }
   const seen = new Set<string>(),
     stack = [to];
   while (stack.length) {
@@ -211,7 +214,7 @@ export function createsAncestryCycle(
     if (id === from) return true;
     if (seen.has(id)) continue;
     seen.add(id);
-    stack.push(...(children.get(id) || []));
+    for (const child of children.get(id) || []) stack.push(child);
   }
   return false;
 }
@@ -229,20 +232,51 @@ export function formatFamilyDate(date: FamilyDate) {
     (date.leapMonth ? ' (tháng nhuận)' : '')
   );
 }
+// Track minimum/maximum depth rather than enumerating every possible ancestry path.
+// Any different depths mean the generation is ambiguous. Traversal is iterative and linear.
 export function descendantLayers(root: string, edges: FamilyRelationship[]) {
-  const levels = new Map<string, Set<number>>([[root, new Set([0])]]);
-  const pending: [string, number][] = [[root, 0]];
-  while (pending.length) {
-    const [id, depth] = pending.shift()!;
-    for (const e of edges)
-      if (!e.archived && e.verified && e.kind === 'parent' && e.from === id) {
-        const values = levels.get(e.to) || new Set<number>();
-        if (!values.has(depth + 1) && depth < 1000) {
-          values.add(depth + 1);
-          levels.set(e.to, values);
-          pending.push([e.to, depth + 1]);
-        }
-      }
+  const children = new Map<string, string[]>();
+  for (const e of edges) {
+    if (e.archived || !e.verified || e.kind !== 'parent') continue;
+    const row = children.get(e.from) || [];
+    row.push(e.to);
+    children.set(e.from, row);
   }
-  return levels;
+  const reachable = new Set([root]),
+    queue = [root];
+  for (let i = 0; i < queue.length; i++) {
+    for (const child of children.get(queue[i]) || []) {
+      if (!reachable.has(child)) {
+        reachable.add(child);
+        queue.push(child);
+      }
+    }
+  }
+  const degree = new Map(queue.map((id) => [id, 0]));
+  for (const id of queue)
+    for (const child of children.get(id) || []) degree.set(child, degree.get(child)! + 1);
+  const ready = queue.filter((id) => degree.get(id) === 0);
+  const bounds = new Map<string, [number, number]>([[root, [0, 0]]]);
+  for (let i = 0; i < ready.length; i++) {
+    const id = ready[i],
+      value = bounds.get(id);
+    for (const child of children.get(id) || []) {
+      if (value) {
+        const old = bounds.get(child);
+        bounds.set(child, [
+          Math.min(old?.[0] ?? Infinity, value[0] + 1),
+          Math.max(old?.[1] ?? -Infinity, value[1] + 1),
+        ]);
+      }
+      degree.set(child, degree.get(child)! - 1);
+      if (degree.get(child) === 0) ready.push(child);
+    }
+  }
+  // Defensive handling of corrupt/cyclic imports: never invent a definite generation.
+  return new Map(
+    queue.map((id) => {
+      const value = degree.get(id) === 0 ? bounds.get(id) : undefined;
+      return [id, value ? new Set(value) : new Set<number>()];
+    }),
+  );
 }

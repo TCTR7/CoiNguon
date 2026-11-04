@@ -1,4 +1,6 @@
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { apiUrl } from '../../shared/firebase/api';
+import { collection, query, where } from 'firebase/firestore';
+import { watchPagedCollection } from '../../shared/firebase/watchPagedCollection';
 import { auth, db } from '../../shared/firebase/client';
 import { requireOnline } from '../workspace/service';
 import type {
@@ -32,7 +34,7 @@ export async function genealogyMutation(
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 25000);
   try {
-    response = await fetch('http://127.0.0.1:8787/api/genealogy', {
+    response = await fetch(apiUrl('genealogy'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -42,7 +44,7 @@ export async function genealogyMutation(
       signal: controller.signal,
     });
   } catch {
-    throw new Error('Chưa kết nối được dịch vụ gia phả local. Kiểm tra npm run dev rồi thử lại.');
+    throw new Error('Chưa kết nối được dịch vụ gia phả. Kiểm tra kết nối rồi thử lại.');
   } finally {
     window.clearTimeout(timeout);
   }
@@ -60,18 +62,21 @@ export function watchGenealogy(
 ) {
   const state: GenealogyData = { people: [], relationships: [], requests: [], links: [] };
   const loaded = new Set<string>();
+  let invalidated = false;
   const subscribe = (collectionName: string, key: keyof GenealogyData, own = false) => {
     const ref = collection(db, 'clans', clanId, collectionName);
-    return onSnapshot(
+    return watchPagedCollection(
       own ? query(ref, where('uid', '==', uid)) : ref,
-      { includeMetadataChanges: true },
-      (snapshot) => {
-        if (snapshot.metadata.fromCache) return;
-        Object.assign(state, { [key]: snapshot.docs.map((d) => ({ ...d.data(), id: d.id })) });
+      (rows) => {
+        if (invalidated) return;
+        Object.assign(state, { [key]: rows });
         loaded.add(key);
         if (loaded.size === 4) onData({ ...state });
       },
-      (error) => onError(error, collectionName),
+      (error) => {
+        invalidated = true;
+        onError(error, collectionName);
+      },
     );
   };
   const unsubscribers = [

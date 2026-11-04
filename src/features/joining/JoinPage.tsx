@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ShieldCheck, Users } from 'lucide-react';
 import { auth } from '../../shared/firebase/client';
 import AuthForm from '../workspace/AuthForm';
+import { AccountGate } from '../workspace/AccountGate';
 import { logout, watchMine } from '../workspace/service';
 import {
   joinMutation,
@@ -79,12 +80,14 @@ export default function JoinPage() {
       ) : !session.ready ? (
         <p role="status">Đang kiểm tra đăng nhập…</p>
       ) : session.user ? (
-        <Applicant
-          key={session.user.uid + '_' + token}
-          user={session.user}
-          preview={preview}
-          token={token}
-        />
+        <AccountGate key={session.user.uid} user={session.user}>
+          <Applicant
+            key={session.user.uid + '_' + token}
+            user={session.user}
+            preview={preview}
+            token={token}
+          />
+        </AccountGate>
       ) : (
         <>
           <div className="join-actions">

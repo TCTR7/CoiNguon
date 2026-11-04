@@ -143,13 +143,13 @@ it('restores into an isolated clan idempotently with original dates/relations, d
   await memberRef(admin).delete();
   await expect(request(admin, 'restore', input)).rejects.toMatchObject({ status: 403 });
 });
-it('round-trips 1,000 synthetic profiles and 999 relationships through chunked restore and export', async () => {
-  const data = portableFixture(1000),
+it('round-trips 2,500 synthetic profiles and 2,499 relationships through chunked restore and export', async () => {
+  const data = portableFixture(2500),
     start = performance.now();
   const result = (await request(admin, 'restore', {
     data,
     operationId: crypto.randomUUID(),
-    name: 'Thử tải một nghìn',
+    name: 'Thử tải hai nghìn năm trăm',
     confirm: true,
   })) as { clanId: string };
   targetIds.add(result.clanId);
@@ -161,7 +161,7 @@ it('round-trips 1,000 synthetic profiles and 999 relationships through chunked r
     data.relationships.sort((a, b) => a.id.localeCompare(b.id)),
   );
   console.log(
-    'Synthetic 1000 restore + export (emulator): ' + Math.round(performance.now() - start) + ' ms',
+    'Synthetic 2500 restore + export (emulator): ' + Math.round(performance.now() - start) + ' ms',
   );
 }, 60000);
 it('deduplicates concurrent scans and generates distinct 7/3-day milestones per current recipient', async () => {

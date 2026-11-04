@@ -51,6 +51,10 @@
   display: grid;
   gap: 1rem;
 }
+.phone-invites {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .join-request {
   padding: 1.25rem;
   border: 1px solid #c9b899;

@@ -5,6 +5,8 @@ import { useConnectivity } from '../../shared/offline/useOnline';
 import { MyJoinRequests } from '../joining/MyJoinRequests';
 import { JoinManager } from '../joining/JoinManager';
 import AuthForm from './AuthForm';
+import { AccountGate } from './AccountGate';
+import { PhoneInvites } from './PhoneInvites';
 import { CalendarPanel } from '../anniversaries/CalendarPanel';
 import GenealogyPanel from '../genealogy/GenealogyPanel';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
@@ -51,7 +53,9 @@ export default function WorkspacePage() {
       {!session.ready ? (
         <p role="status">Đang kiểm tra đăng nhập…</p>
       ) : session.user ? (
-        <SignedIn key={session.user.uid} user={session.user} />
+        <AccountGate key={session.user.uid} user={session.user}>
+          <SignedIn user={session.user} />
+        </AccountGate>
       ) : (
         <AuthForm />
       )}
@@ -150,6 +154,7 @@ function SignedIn({ user }: { user: User }) {
             onClose={() => setParams({})}
           />
         )}
+        <PhoneInvites />
         <div className="clan-controls">
           <label>
             Dòng họ đang xem
@@ -199,7 +204,7 @@ function SignedIn({ user }: { user: User }) {
           <div className="empty-state">
             <Users size={36} />
             <h2>Chưa tham gia dòng họ nào</h2>
-            <p>Tạo dòng họ đầu tiên hoặc mở link mời từ người thân.</p>
+            <p>Tạo dòng họ đầu tiên hoặc kiểm tra lời mời theo số điện thoại của bạn.</p>
           </div>
         )}
         <MyJoinRequests uid={user.uid} />
@@ -280,6 +285,7 @@ function AcceptInvite({
   onClose: () => void;
 }) {
   const now = useNow();
+  const [submitted, setSubmitted] = useState(false);
   const [invite, setInvite] = useState<Invitation | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -304,8 +310,8 @@ function AcceptInvite({
       <h2>{invite ? invite.clanName : 'Nhận lời mời'}</h2>
       {invite && (
         <p>
-          Quyền được mời: {roleLabels[invite.role]}. Link dùng một lần; chỉ nhận nếu bạn biết người
-          gửi.
+          Sau khi bạn đồng ý, admin cần xác nhận trước khi cấp quyền thành viên. Chỉ nhận nếu bạn
+          biết người gửi.
         </p>
       )}
       {unavailable && (
@@ -321,12 +327,14 @@ function AcceptInvite({
       <div className="button-row">
         <button
           className="button primary"
-          disabled={!invite || !!unavailable || busy}
+          disabled={!invite || !!unavailable || busy || submitted}
           onClick={async () => {
             setBusy(true);
             setError('');
             try {
-              onAccepted(await acceptInvitation(token));
+              const clanId = await acceptInvitation(token);
+              setSubmitted(true);
+              onAccepted(clanId);
             } catch (e) {
               setError(friendlyError(e));
             } finally {
@@ -335,7 +343,7 @@ function AcceptInvite({
           }}
         >
           <Check size={18} />
-          {busy ? 'Đang tham gia…' : 'Đồng ý tham gia'}
+          {submitted ? 'Đang chờ admin duyệt' : busy ? 'Đang gửi…' : 'Đồng ý tham gia'}
         </button>
         <button className="button secondary" onClick={onClose}>
           Đóng lời mời
@@ -402,6 +410,7 @@ function ClanPanel({
       <DataPanel membership={membership} />
       <RemindersPanel membership={membership} />
       <GenealogyPanel membership={membership} onAccessLost={onAccessLost} />
+      {admin && <PhoneInvites clanId={membership.clanId} />}
       <CalendarPanel membership={membership} members={members || []} onAccessLost={onAccessLost} />
       <h3 className="members-heading">Thành viên dòng họ</h3>
       <p className="subtle">
@@ -585,16 +594,14 @@ function InviteManager({ clan }: { clan: Clan }) {
       <p className="eyebrow">MỞ THÊM MỘT CÁNH CỬA</p>
       <h2>Mời người thân</h2>
       <p className="subtle">
-        Lời mời riêng dùng một lần trong 6 ngày cho người đã được bạn chấp thuận. Người có link nhận
-        quyền ngay; chỉ gửi riêng đúng người, không đăng vào nhóm. Để nhiều người đăng ký và chờ
-        duyệt, dùng link đăng ký ở phía trên.
+        Lời mời riêng dùng một lần trong 6 ngày. Người nhận phản hồi rồi chờ admin duyệt quyền thành
+        viên. Chỉ gửi riêng đúng người; có thể mời theo số điện thoại ngay tại hồ sơ người còn sống.
       </p>
       <div className="button-row">
         <label>
-          Quyền khi tham gia
+          Quyền sau khi được duyệt
           <select value={role} onChange={(e) => setRole(e.target.value as 'editor' | 'member')}>
             <option value="member">Thành viên — xem thông tin</option>
-            <option value="editor">Biên tập viên — sửa gia phả</option>
           </select>
         </label>
         <button

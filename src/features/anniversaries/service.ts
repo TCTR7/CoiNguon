@@ -1,4 +1,6 @@
-import { collection, onSnapshot } from 'firebase/firestore';
+import { apiUrl } from '../../shared/firebase/api';
+import { collection } from 'firebase/firestore';
+import { watchPagedCollection } from '../../shared/firebase/watchPagedCollection';
 import { auth, db } from '../../shared/firebase/client';
 import { requireOnline } from '../workspace/service';
 import type { FamilyPerson } from '../../shared/domain/genealogy';
@@ -26,7 +28,7 @@ export async function eventMutation(
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 25000);
   try {
-    const response = await fetch('http://127.0.0.1:8787/api/events', {
+    const response = await fetch(apiUrl('events'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -41,7 +43,7 @@ export async function eventMutation(
   } catch (e) {
     if (e instanceof TypeError || (e as Error).name === 'AbortError')
       throw new Error(
-        'Chưa kết nối được lịch giỗ local. Kiểm tra npm run dev; tải bản mới trước khi thử lại.',
+        'Chưa kết nối được lịch giỗ. Kiểm tra kết nối; tải bản mới trước khi thử lại.',
       );
     throw e;
   } finally {
@@ -61,6 +63,7 @@ export function watchCalendar(
     delegations: [],
   };
   const loaded = new Set<string>();
+  let invalidated = false;
   const pairs = [
     ['people', 'people'],
     ['anniversaryRules', 'rules'],
@@ -69,16 +72,18 @@ export function watchCalendar(
     ['delegations', 'delegations'],
   ] as const;
   const unsub = pairs.map(([name, key]) =>
-    onSnapshot(
+    watchPagedCollection(
       collection(db, 'clans', clanId, name),
-      { includeMetadataChanges: true },
-      (snapshot) => {
-        if (snapshot.metadata.fromCache) return;
-        Object.assign(state, { [key]: snapshot.docs.map((d) => ({ ...d.data(), id: d.id })) });
+      (rows) => {
+        if (invalidated) return;
+        Object.assign(state, { [key]: rows });
         loaded.add(key);
         if (loaded.size === pairs.length) onData({ ...state });
       },
-      onError,
+      (error) => {
+        invalidated = true;
+        onError(error);
+      },
     ),
   );
   return () => unsub.forEach((fn) => fn());

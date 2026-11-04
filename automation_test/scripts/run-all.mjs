@@ -21,7 +21,14 @@ if (!npm) {
 // PowerShell's npm.ps1 may expose --headed as npm config instead of an argument.
 const headed = options.includes('--headed') || process.env.npm_config_headed === 'true';
 const browserOptions = headed ? ['--headed', '--workers', '1'] : [];
-const env = { ...process.env };
+const env = {
+  ...process.env,
+  APP_ENV: 'local',
+  APP_ROLE: 'api',
+  VITE_APP_ENV: 'local',
+  VITE_FIREBASE_PROJECT_ID: 'demo-coinguon',
+  VITE_API_BASE_URL: 'http://127.0.0.1:8787/api',
+};
 delete env.npm_config_headed;
 console.log('[All tests] Browser mode: ' + (headed ? 'headed' : 'headless'));
 if (headed) console.log('[All tests] Browser windows open after Unit, API, Rules and Build PWA.');

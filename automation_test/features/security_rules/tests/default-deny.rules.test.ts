@@ -21,6 +21,11 @@ import {
 } from 'firebase/firestore';
 import { beforeAll, beforeEach, afterAll, it, expect } from 'vitest';
 let env: RulesTestEnvironment;
+it('denies direct access to server rate budgets even for clan admins', async () => {
+  const db = env.authenticatedContext('owner-a').firestore();
+  await assertFails(getDoc(doc(db, 'requestBudgets', 'synthetic-window')));
+  await assertFails(setDoc(doc(db, 'requestBudgets', 'synthetic-window'), { count: 0 }));
+});
 beforeAll(async () => {
   env = await initializeTestEnvironment({
     projectId: 'demo-coinguon',
@@ -31,6 +36,7 @@ beforeEach(async () => {
   await env.clearFirestore();
   await env.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
+    await setDoc(doc(db, 'accounts', 'new-owner'), { complete: true });
     for (const [clan, owner] of [
       ['alpha', 'owner-a'],
       ['beta', 'owner-b'],
@@ -98,6 +104,22 @@ function join(uid: string, role = 'member') {
   batch.update(doc(db, 'invitations', token), { acceptedBy: uid });
   return batch.commit();
 }
+it('denies direct access to account, phone lookup, contacts and private invites even to clan admins', async () => {
+  for (const uid of ['owner-a', 'member-a', 'recipient']) {
+    const db = dbFor(uid);
+    for (const path of [
+      'accounts/' + uid,
+      'phoneClaims/private-key',
+      'serverSecrets/phoneLookup',
+      'membershipInvites/private',
+      'clans/alpha/personContacts/person',
+    ]) {
+      await assertFails(getDoc(doc(db, path)));
+      await assertFails(setDoc(doc(db, path), { complete: true, uid }));
+    }
+    await assertFails(getDocs(collection(db, 'phoneClaims')));
+  }
+});
 it('denies unauthenticated and cross-clan reads/writes', async () => {
   await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'clans', 'alpha')));
   await assertFails(getDoc(doc(dbFor('member-a'), 'clans', 'beta')));
@@ -187,10 +209,10 @@ it('requires the backend for admin demotion/removal and keeps creator metadata i
   }
   await assertFails(updateDoc(doc(dbFor('owner-a'), 'clans', 'alpha'), { ownerUid: 'admin-a' }));
 });
-it('a valid invitation is consumed atomically with matching membership', async () => {
+it('even a valid invitation cannot create membership without backend review', async () => {
   await seedInvitation();
-  await assertSucceeds(join('recipient'));
-  await assertSucceeds(getDoc(doc(dbFor('recipient'), 'clans', 'alpha')));
+  await assertFails(join('recipient'));
+  await assertFails(getDoc(doc(dbFor('recipient'), 'clans', 'alpha')));
   await assertFails(join('someone-else'));
 });
 it('does not allow consumption without joining or joining with a higher role', async () => {
@@ -211,10 +233,10 @@ it('rejects expired, revoked, consumed or orphaned invitations', async () => {
     await assertFails(join('recipient'));
   }
 });
-it('allows one winner when two recipients race to consume a link', async () => {
+it('blocks both recipients racing to bypass backend approval', async () => {
   await seedInvitation();
   const results = await Promise.allSettled([join('recipient-one'), join('recipient-two')]);
-  expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+  expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(0);
 });
 it('requires admin for creation, restricts scope/expiry and prevents invitation listing by members', async () => {
   const base = {
@@ -259,7 +281,19 @@ it('revocation cannot be undone and recipients cannot rewrite invitation metadat
 });
 it('removal immediately revokes clan access and requires a fresh invitation to rejoin', async () => {
   await seedInvitation();
-  await join('recipient');
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await setDoc(doc(db, 'memberships', 'alpha_recipient'), {
+      clanId: 'alpha',
+      uid: 'recipient',
+      displayName: 'Người đã được duyệt',
+      role: 'member',
+      joinedAt: Timestamp.now(),
+      invitationId: token,
+    });
+    await updateDoc(doc(db, 'invitations', token), { acceptedBy: 'recipient' });
+  });
+  await assertSucceeds(getDoc(doc(dbFor('recipient'), 'clans', 'alpha')));
   // Simulate a removal committed by the authorized backend; client deletion is denied.
   await env.withSecurityRulesDisabled((context) =>
     deleteDoc(doc(context.firestore(), 'memberships', 'alpha_recipient')),

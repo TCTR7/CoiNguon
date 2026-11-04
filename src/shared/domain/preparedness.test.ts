@@ -24,11 +24,11 @@ it('rejects cycles, missing references and duplicate IDs', () => {
   data.people.push(data.people[0]);
   expect(() => validatePortable(data)).toThrow('trùng');
 });
-it('validates a 1,000-profile chain without recursion and caps the portable scope', () => {
-  const data = portableFixture(1000);
-  expect(validatePortable(data).relationships).toHaveLength(999);
-  data.people.push({ ...data.people[0], id: 'too-much' });
-  expect(() => validatePortable(data)).toThrow('hạn mức');
+it('validates 5,000 profiles without a profile-count cap or recursion', () => {
+  const data = portableFixture(5000);
+  expect(validatePortable(data).relationships).toHaveLength(4999);
+  data.people.push({ ...data.people[0], id: 'one-more' });
+  expect(validatePortable(data).people).toHaveLength(5001);
 });
 it('calculates 7/3 calendar days at 09:00 in event timezone across DST and year boundaries', () => {
   const vietnam = reminderMilestones('2090-01-01', 'Asia/Ho_Chi_Minh');

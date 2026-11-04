@@ -1,3 +1,4 @@
+import { apiUrl } from '../../shared/firebase/api';
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { auth, db } from '../../shared/firebase/client';
 import { requireOnline } from '../workspace/service';
@@ -14,6 +15,7 @@ export interface JoinSettings {
   expiresAtMs: number;
 }
 export interface JoinRequest {
+  privateToken?: string | null;
   id: string;
   clanId: string;
   clanName: string;
@@ -39,7 +41,7 @@ async function api(payload: Record<string, unknown>, preview = false) {
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), 25000);
   try {
-    const response = await fetch('http://127.0.0.1:8787/api/join' + (preview ? '/preview' : ''), {
+    const response = await fetch(apiUrl('join' + (preview ? '/preview' : '')), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -53,7 +55,7 @@ async function api(payload: Record<string, unknown>, preview = false) {
     return body;
   } catch (e) {
     if (e instanceof TypeError || (e as Error).name === 'AbortError')
-      throw new Error('Chưa kết nối được dịch vụ local. Kiểm tra kết nối rồi thử lại.');
+      throw new Error('Chưa kết nối được dịch vụ. Kiểm tra kết nối rồi thử lại.');
     throw e;
   } finally {
     window.clearTimeout(timer);

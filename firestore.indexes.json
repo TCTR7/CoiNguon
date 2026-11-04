@@ -1,0 +1,23 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "memberships",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clanId", "order": "ASCENDING" },
+        { "fieldPath": "role", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "membershipInvites",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clanId", "order": "ASCENDING" },
+        { "fieldPath": "personId", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    { "collectionGroup": "requestBudgets", "fieldPath": "expiresAt", "ttl": true, "indexes": [] }
+  ]
+}

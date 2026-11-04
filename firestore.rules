@@ -2,6 +2,7 @@ rules_version = '2';
 service cloud.firestore {
  match /databases/{database}/documents {
   function signedIn() { return request.auth != null; }
+  function completeAccount() { return signedIn() && exists(/databases/$(database)/documents/accounts/$(request.auth.uid)) && get(/databases/$(database)/documents/accounts/$(request.auth.uid)).data.complete == true; }
   function memberPath(clan, uid) { return /databases/$(database)/documents/memberships/$(clan + '_' + uid); }
   function isMember(clan) { return signedIn() && exists(memberPath(clan, request.auth.uid)); }
   function isAdminFor(clan, uid) { return exists(memberPath(clan, uid)) && get(memberPath(clan, uid)).data.role == 'admin'; }
@@ -18,16 +19,9 @@ service cloud.firestore {
    return !exists(/databases/$(database)/documents/clans/$(data.clanId))
     && clan.ownerUid == request.auth.uid && data.role == 'admin' && data.invitationId == null;
   }
-  function invitationJoin(data) {
-   let before = get(/databases/$(database)/documents/invitations/$(data.invitationId)).data;
-   let after = getAfter(/databases/$(database)/documents/invitations/$(data.invitationId)).data;
-   return data.invitationId is string && before.clanId == data.clanId && before.role == data.role
-    && before.revoked == false && before.acceptedBy == null && before.expiresAt > request.time
-    && isAdminFor(data.clanId, before.createdBy) && after.acceptedBy == request.auth.uid;
-  }
   match /clans/{clanId} {
    allow get: if isMember(clanId);
-   allow create: if signedIn() && !clanId.matches('restore_.*') && request.resource.data.keys().hasOnly(['name','ownerUid','createdAt'])
+   allow create: if completeAccount() && !clanId.matches('restore_.*') && request.resource.data.keys().hasOnly(['name','ownerUid','createdAt'])
     && validName(request.resource.data.name) && request.resource.data.ownerUid == request.auth.uid
     && request.resource.data.createdAt == request.time
     && getAfter(memberPath(clanId, request.auth.uid)).data.role == 'admin';
@@ -35,9 +29,9 @@ service cloud.firestore {
   }
   match /memberships/{id} {
    allow read: if signedIn() && (resource.data.uid == request.auth.uid || isMember(resource.data.clanId));
-   allow create: if signedIn() && validMembership(request.resource.data, id)
+   allow create: if completeAccount() && validMembership(request.resource.data, id)
     && request.resource.data.uid == request.auth.uid
-    && (ownerBootstrap(request.resource.data) || invitationJoin(request.resource.data));
+    && ownerBootstrap(request.resource.data);
    // Membership role changes and departures require the backend transaction lock.
    allow update, delete: if false;
   }
@@ -52,15 +46,8 @@ service cloud.firestore {
     && request.resource.data.createdAt == request.time && request.resource.data.expiresAt is timestamp
     && request.resource.data.expiresAt > request.time && request.resource.data.expiresAt <= request.time + duration.value(7,'d')
     && request.resource.data.revoked == false && request.resource.data.acceptedBy == null;
-   allow update: if (isAdmin(resource.data.clanId)
-      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['revoked']) && request.resource.data.revoked == true)
-    || (signedIn() && resource.data.revoked == false && resource.data.acceptedBy == null
-      && resource.data.expiresAt > request.time && isAdminFor(resource.data.clanId, resource.data.createdBy)
-      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['acceptedBy'])
-      && request.resource.data.acceptedBy == request.auth.uid
-      && !exists(memberPath(resource.data.clanId, request.auth.uid))
-      && getAfter(memberPath(resource.data.clanId, request.auth.uid)).data.invitationId == token
-      && getAfter(memberPath(resource.data.clanId, request.auth.uid)).data.role == resource.data.role);
+   allow update: if isAdmin(resource.data.clanId)
+      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['revoked']) && request.resource.data.revoked == true;
    allow delete: if false;
   }
   match /clans/{clanId}/people/{id} { allow read: if isMember(clanId); allow write: if false; }

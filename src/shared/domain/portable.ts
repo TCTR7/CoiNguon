@@ -94,9 +94,8 @@ function integer(value: unknown, min = 1, max = 100000000) {
     throw new Error('Phiên bản hoặc số năm không hợp lệ.');
   return value;
 }
-function rows(value: unknown, max: number) {
-  if (!Array.isArray(value) || value.length > max)
-    throw new Error('Tệp vượt hạn mức local: 1.000 hồ sơ, 5.000 quan hệ, 2.000 sự kiện.');
+function rows(value: unknown) {
+  if (!Array.isArray(value)) throw new Error('Danh sách trong tệp không hợp lệ.');
   const seen = new Set<string>();
   return value.map((item) => {
     const row = object(item),
@@ -130,7 +129,7 @@ export function validatePortable(value: unknown): PortableData {
     exportedAtUTC = text(data.exportedAtUTC, 40, 1);
   if (!Number.isFinite(Date.parse(exportedAtUTC)))
     throw new Error('Thời điểm xuất tệp không hợp lệ.');
-  const people = rows(data.people, 1000).map((row) => {
+  const people = rows(data.people).map((row) => {
     keys(row, ['id', 'version', 'archived', ...personFields]);
     if (typeof row.archived !== 'boolean') throw new Error('Trạng thái hồ sơ không hợp lệ.');
     if (typeof row.lifeStatus !== 'string') throw new Error('Trạng thái hồ sơ không hợp lệ.');
@@ -142,7 +141,7 @@ export function validatePortable(value: unknown): PortableData {
     };
   });
   const byId = new Map(people.map((p) => [p.id, p]));
-  const relationships = rows(data.relationships, 5000).map((row) => {
+  const relationships = rows(data.relationships).map((row) => {
     keys(row, ['id', 'version', 'archived', ...relationshipFields]);
     if (typeof row.archived !== 'boolean') throw new Error('Trạng thái quan hệ không hợp lệ.');
     if (typeof row.parentType !== 'string' || typeof row.status !== 'string')
@@ -154,12 +153,14 @@ export function validatePortable(value: unknown): PortableData {
       throw new Error('Quan hệ đang hoạt động không được nối hồ sơ đã lưu trữ.');
     return { ...fields, id: id(row.id), version: integer(row.version), archived: row.archived };
   });
-  // Kahn's algorithm keeps validation linear for the 1,000-profile pilot fixture.
+  // Kahn's algorithm validates any graph size without recursion or a profile-count cap.
   const children = new Map<string, string[]>(),
     degree = new Map(people.map((p) => [p.id, 0]));
   for (const edge of relationships)
     if (!edge.archived && edge.kind === 'parent') {
-      children.set(edge.from, [...(children.get(edge.from) || []), edge.to]);
+      const row = children.get(edge.from) || [];
+      row.push(edge.to);
+      children.set(edge.from, row);
       degree.set(edge.to, degree.get(edge.to)! + 1);
     }
   const queue = [...degree].filter(([, n]) => n === 0).map(([key]) => key);
@@ -174,7 +175,7 @@ export function validatePortable(value: unknown): PortableData {
     }
   }
   if (visited !== people.length) throw new Error('Tệp có vòng lặp tổ tiên.');
-  const rules = rows(data.rules, 1000).map((row) => {
+  const rules = rows(data.rules).map((row) => {
     keys(row, ['id', 'version', 'sourceDate', 'calendar', 'leapPolicy', 'missingDayPolicy']);
     if (!byId.has(id(row.id))) throw new Error('Quy tắc không có hồ sơ tương ứng.');
     for (const field of ['calendar', 'leapPolicy', 'missingDayPolicy'])
@@ -186,7 +187,7 @@ export function validatePortable(value: unknown): PortableData {
       sourceDate: validateFamilyDate(row.sourceDate),
     };
   });
-  const events = rows(data.events, 2000).map((row) => {
+  const events = rows(data.events).map((row) => {
     keys(row, ['id', ...eventFields]);
     const personId = id(row.personId),
       year = integer(row.year, 1900, 2099);

@@ -6,6 +6,8 @@ Cấu trúc và lệnh chạy từng tính năng: [automation_test/README.md](..
 
 ## Theo loại thay đổi
 
+`npm test` chạy unit frontend/domain rồi backend Node riêng trong `automation_test/vitest.backend.config.ts`. Backend kiểm tra cấu hình cloud lỗi, tách API/worker và từ chối request thiếu xác thực/origin sai mà không truy cập Firebase thật. API Emulator có ca counter tần suất đồng thời; Rules chặn client đọc/ghi requestBudgets. Runner local ép mode/project demo ngay cả khi `.env.local` chứa cấu hình Firebase thật. Chạy cloud OAuth/IAM/index trên staging vẫn là bước riêng.
+
 - Chỉ tài liệu: kiểm tra link tương đối, UTF-8, tính nhất quán giữa phạm vi/quyết định/trạng thái. Không cần tạo test ứng dụng cho sửa câu chữ.
 - Logic miền: unit test trường hợp bình thường, biên và dữ liệu thiếu.
 - Quyền/truy cập dữ liệu: integration test với emulator hoặc môi trường cô lập, bao gồm truy cập bị từ chối.
@@ -39,6 +41,10 @@ Bàn giao quản trị có ca API cho admin cuối, người tạo hạ quyền/
 
 Thiệp/RSVP: API thử DTO tối thiểu, link view/reply tách biệt, ID giả/cross-clan, phản hồi 4→3, retry và hai người sửa cùng hộ, số âm/thập phân/0, hạn phản hồi, ghi thay cần lý do, cấp lại giữ phản hồi, nguồn ngày/epoch cũ, hủy/hoàn tất. Rules chặn trực tiếp tokens/settings/groups cho cả admin. Browser thử xuyên luồng từ sự kiện đến khách không đăng nhập, sửa tổng, đổi lịch, cấp lại/hủy, offline và axe/320px/chữ 200%.
 
-Bước 6: unit kiểm tra schema whitelist/ID/tham chiếu/vòng lặp, ngày thiếu/lịch gốc và mốc 7/3 qua DST. API có concurrent scan, retry hữu hạn, lỗi cuối, hủy/đổi revision, bỏ công bố muộn/chưa xác nhận, epoch rời–tham gia lại và mất quyền giữa claim/delivery; khôi phục thử riêng/idempotency/không ghi đè và round-trip 1.000 hồ sơ. Rules chặn job/inbox/session và chiếm prefix staging.
+Bước 6: unit kiểm tra schema whitelist/ID/tham chiếu/vòng lặp, ngày thiếu/lịch gốc và mốc 7/3 qua DST. API có concurrent scan, retry hữu hạn, lỗi cuối, hủy/đổi revision, bỏ công bố muộn/chưa xác nhận, epoch rời–tham gia lại và mất quyền giữa claim/delivery; khôi phục thử riêng/idempotency/không ghi đè và round-trip 2.500 hồ sơ. Rules chặn job/inbox/session và chiếm prefix staging.
 
 test:offline dùng bản build + service worker thật trên Edge desktop/mobile giả lập: tải chủ động, offline reload/chỉ đọc, logout offline/xóa cache, mất quyền khi nối lại, đổi tài khoản, JSON qua UI, tìm trong 1.000 hồ sơ, thông báo chung/chống trùng/tắt quyền, axe/320px/chữ 200%. Quyền denied được mô phỏng có chủ đích, không chứng minh thao tác cài đặt quyền trên điện thoại thật. Không coi số đo Emulator/browser giả lập là SLA thiết bị thực tế. Android/iPhone thật, FCM foreground/background/killed app, token hết hạn, cập nhật app đang nhập form, backup toàn bộ hạ tầng và thử dùng với người lớn tuổi vẫn phải kiểm tra trước pilot.
+
+Cây lớn: `npm run test:feature -- genealogy` gồm luồng CRUD/quyền hiện có và gia phả 5.000 người giả trên Edge desktop/mobile giả lập: mở/thu nhánh, zoom/pan, tìm không dấu, định vị, giữ gốc khi xem hồ sơ, số thẻ DOM theo viewport, axe/320px/chữ 200%. Unit layout dùng 250/5.000/20.000 người và chuỗi 5.000 đời; kiểm tra snapshot realtime/cache/quyền và import trên 1.000 hồ sơ. Không suy rộng các số này thành SLA cloud hay thiết bị thật.
+
+Tài khoản/mời theo số (AC-01c): unit chuẩn hóa 0/+84; API thử trùng số đồng thời, mời trước/sau đăng ký, DTO tối thiểu, Auth identity, admin xác nhận, version/idempotency, role/epoch cũ, số được cấp lại và hồ sơ/creator mất hiệu lực. Rules chặn accounts/phoneClaims/serverSecrets/personContacts/membershipInvites trực tiếp và chặn nhận link để tự tạo membership. Browser auth dùng Google popup thật của Emulator rồi hoàn tất số, nhận/duyệt từ cây, axe/320px/chữ 200% và logout. Đây là Google giả lập; OAuth Google thật và kiểm thử thiết bị thật vẫn là mốc riêng.

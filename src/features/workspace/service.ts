@@ -1,3 +1,4 @@
+import { apiUrl } from '../../shared/firebase/api';
 import { clearPrivateData, pruneSnapshots } from '../../shared/offline/store';
 import {
   createUserWithEmailAndPassword,
@@ -18,7 +19,7 @@ import {
   Timestamp,
   runTransaction,
 } from 'firebase/firestore';
-import { auth, db } from '../../shared/firebase/client';
+import { auth, db, useFirebaseEmulators } from '../../shared/firebase/client';
 export type Role = 'admin' | 'editor' | 'member';
 export const roleLabels: Record<Role, string> = {
   admin: 'Quản trị viên',
@@ -61,6 +62,7 @@ function validName(name: string) {
 }
 export async function login(email: string, password: string, name?: string) {
   requireOnline();
+  if (!useFirebaseEmulators) throw new Error('Vui lòng đăng nhập bằng Google.');
   if (!/^[^@\s]+@[^@\s]+\.test$/i.test(email.trim()))
     throw new Error('Dùng email giả kết thúc bằng .test, ví dụ khoi@gia-dinh.test.');
   if (password.length < 8) throw new Error('Mật khẩu thử cần ít nhất 8 ký tự.');
@@ -185,24 +187,9 @@ export async function acceptInvitation(token: string) {
   requireOnline();
   const user = auth.currentUser;
   if (!user) throw new Error('Vui lòng đăng nhập.');
-  return runTransaction(db, async (transaction) => {
-    const ref = doc(db, 'invitations', token);
-    const snapshot = await transaction.get(ref);
-    if (!snapshot.exists()) throw new Error('Không tìm thấy lời mời.');
-    const invite = snapshot.data() as Invitation;
-    if (invite.revoked || invite.acceptedBy || invite.expiresAt.toMillis() <= Date.now())
-      throw new Error('Lời mời đã dùng, hết hạn hoặc được thu hồi.');
-    transaction.set(doc(db, 'memberships', invite.clanId + '_' + user.uid), {
-      clanId: invite.clanId,
-      uid: user.uid,
-      displayName: validName(user.displayName || 'Thành viên mới'),
-      role: invite.role,
-      joinedAt: serverTimestamp(),
-      invitationId: token,
-    });
-    transaction.update(ref, { acceptedBy: user.uid });
-    return invite.clanId;
-  });
+  const { workspaceApi } = await import('./accountService');
+  const result = await workspaceApi('join', { action: 'submitPrivate', token });
+  return result.clanId as string;
 }
 export async function revokeInvitation(id: string) {
   requireOnline();
@@ -223,7 +210,7 @@ async function membershipMutation(
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), 25000);
   try {
-    const response = await fetch('http://127.0.0.1:8787/api/memberships', {
+    const response = await fetch(apiUrl('memberships'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -248,9 +235,7 @@ async function membershipMutation(
     if (!response.ok) throw new Error(result.error || 'Chưa cập nhật được thành viên.');
   } catch (e) {
     if (e instanceof TypeError || (e as Error).name === 'AbortError')
-      throw new Error(
-        'Chưa kết nối được dịch vụ local. Kiểm tra kết nối rồi tải lại trước khi thử lại.',
-      );
+      throw new Error('Chưa kết nối được dịch vụ. Kiểm tra kết nối rồi tải lại trước khi thử lại.');
     throw e;
   } finally {
     window.clearTimeout(timer);
@@ -264,6 +249,12 @@ export async function removeMember(member: Membership) {
 }
 export function friendlyError(error: unknown) {
   const code = (error as { code?: string })?.code;
+  if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request')
+    return 'Bạn đã đóng đăng nhập Google. Có thể thử lại khi sẵn sàng.';
+  if (code === 'auth/popup-blocked')
+    return 'Trình duyệt đang chặn cửa sổ đăng nhập. Hãy cho phép popup hoặc mở bằng trình duyệt hệ thống.';
+  if (code === 'auth/user-mismatch')
+    return 'Hãy chọn đúng tài khoản Google đang đăng nhập để xác nhận đổi số.';
   if (code === 'permission-denied')
     return 'Bạn không còn quyền thực hiện thao tác này hoặc lời mời không còn hiệu lực. Hãy tải lại dữ liệu.';
   if (code === 'auth/email-already-in-use')

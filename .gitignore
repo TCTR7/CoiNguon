@@ -5,6 +5,7 @@ playwright-report/
 test-results/
 .env
 .env.*
+.env*
 !.env.example
 .firebase/
 *-debug.log*

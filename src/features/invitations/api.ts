@@ -1,3 +1,4 @@
+import { apiUrl } from '../../shared/firebase/api';
 export class InvitationApiError extends Error {
   status: number;
   constructor(message: string, status: number) {
@@ -17,7 +18,7 @@ export async function invitationRequest<T>(
   const controller = new AbortController(),
     timer = window.setTimeout(() => controller.abort(), 25000);
   try {
-    const res = await fetch('http://127.0.0.1:8787/api/' + path, {
+    const res = await fetch(apiUrl(path), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -35,7 +36,7 @@ export async function invitationRequest<T>(
   } catch (e) {
     if (e instanceof TypeError || (e as Error).name === 'AbortError')
       throw new Error(
-        'Chưa kết nối được dịch vụ local. Tải cập nhật trước khi gửi lại để biết phản hồi đã được lưu hay chưa.',
+        'Chưa kết nối được dịch vụ. Tải cập nhật trước khi gửi lại để biết phản hồi đã được lưu hay chưa.',
       );
     throw e;
   } finally {

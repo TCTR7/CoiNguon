@@ -21,6 +21,12 @@ test('two accounts join, switch clans, change roles and revoke access live', asy
     const guest = await guestContext.newPage();
     await new AuthPage(guest).register(relative, { invite: new URL(link).search });
     await guest.getByRole('button', { name: 'Đồng ý tham gia' }).click();
+    await page.bringToFront();
+    await page
+      .locator('.join-request')
+      .filter({ hasText: 'Yêu cầu tham gia từ lời mời riêng' })
+      .getByRole('button', { name: 'Duyệt tham gia', exact: true })
+      .click();
     await expect(guest.getByRole('heading', { name: clan, exact: true })).toBeVisible();
     const row = page.locator('.member-item').filter({ hasText: relative });
     await expect(row).toBeVisible();
@@ -128,6 +134,12 @@ test('creator hands off admin, confirms self-demotion, then leaves without delet
     const guest = await guestContext.newPage();
     await new AuthPage(guest).register(successor, { invite: new URL(link).search });
     await guest.getByRole('button', { name: 'Đồng ý tham gia' }).click();
+    await page.bringToFront();
+    await page
+      .locator('.join-request')
+      .filter({ hasText: 'Yêu cầu tham gia từ lời mời riêng' })
+      .getByRole('button', { name: 'Duyệt tham gia', exact: true })
+      .click();
     await page
       .locator('.member-item')
       .filter({ hasText: successor })
@@ -183,6 +195,12 @@ test('creator can leave as admin after granting another admin; the successor kee
     const guest = await guestContext.newPage();
     await new AuthPage(guest).register(successor, { invite: new URL(link).search });
     await guest.getByRole('button', { name: 'Đồng ý tham gia' }).click();
+    await page.bringToFront();
+    await page
+      .locator('.join-request')
+      .filter({ hasText: 'Yêu cầu tham gia từ lời mời riêng' })
+      .getByRole('button', { name: 'Duyệt tham gia', exact: true })
+      .click();
     await page
       .locator('.member-item')
       .filter({ hasText: successor })

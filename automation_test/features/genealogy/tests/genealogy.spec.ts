@@ -27,7 +27,9 @@ test('store partial dates, connect real family records and archive without casca
   await page
     .getByRole('combobox', { name: 'Gốc nhánh đang xem', exact: true })
     .selectOption({ label: 'Ông Mẫu' });
-  await expect(page.getByRole('heading', { name: 'Thế hệ tương đối 2' })).toBeVisible();
+  await expect(page.locator('.family-tree-card').filter({ hasText: 'Cháu Mẫu' })).toContainText(
+    'Thế hệ tương đối 2',
+  );
   await page.getByRole('button', { name: 'Đưa hồ sơ vào lưu trữ', exact: true }).click();
   await page.getByRole('button', { name: 'Xác nhận lưu trữ hồ sơ', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('Hồ sơ còn quan hệ gia đình');

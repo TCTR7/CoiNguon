@@ -1,8 +1,10 @@
 # Trạng thái dự án
 
-- Hiện tại: Bước 6 local hoàn tất; automation_test/ đã tổ chức theo tính năng, pages/tests, common_setup và artifacts.
-- Kiểm tra: 84 API, 23 rules, 1 auth headed đạt với biến Path Windows; lint/format runner đạt.
-- Setup: test:all tự build/chạy tuần tự; --headed giữ desktop/mobile với 1 worker; test:feature chọn từng tính năng.
-- Runner: giữ Path khi thêm Java, gọi CLI test cục bộ; browser mở sau Unit/API/Rules/Build; chưa chạy lại toàn bộ headed.
-- Tiếp theo: chốt OQ-01..05, cấu hình push/backup cloud, kiểm tra lifecycle PWA và QA Android/Safari thật trước pilot.
-- Giới hạn: Emulator/loopback; chưa FCM push nền/backup toàn bộ hạ tầng/dữ liệu thật/browser CI; chunk Firebase còn lớn.
+- Code: backend tách local/cloud, Firebase Admin ADC, project/origin/PORT và secret HMAC qua môi trường.
+- Web: API cấu hình chung /api khi cloud; Google thật, không có form password thử trong cloud.
+- Phát hành: Dockerfile, Hosting/index manifests và build:cloud đã có; chưa deploy tài nguyên thật.
+- Kiểm tra: 82 unit, 101 API, 25 Rules, 42 browser workspace và 8 PWA đạt; typecheck/lint đạt.
+- Container: build và startup cloud bằng dependencies production đạt, không chứa .env.local, chặn mạng ngoài.
+- Local: test/build:local ép demo, PWA từ chối build cloud qua build-target.json; không sửa .env.local.
+- Tiếp theo: phát hành staging và nghiệm thu OAuth/IAM/index, scheduler, thiết bị thật trước pilot.
+- Giới hạn: chưa FCM nền; audit runtime 10 cảnh báo (4 high/6 moderate), cần rà soát trước production.

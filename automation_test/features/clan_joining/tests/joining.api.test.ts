@@ -19,6 +19,7 @@ async function account(): Promise<User> {
   );
   const d = await res.json();
   if (!res.ok) throw new Error('Emulator account failed');
+  await store.doc('accounts/' + d.localId).set({ complete: true, displayName: 'Người thân mẫu' });
   return { uid: d.localId, token: d.idToken };
 }
 async function call(user: User | null, action: string, payload: Record<string, unknown> = {}) {

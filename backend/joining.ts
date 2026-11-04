@@ -18,7 +18,7 @@ function text(value: unknown, min: number, max: number) {
 }
 const unavailable = () =>
   new ApiError(404, 'Link đăng ký không còn hiệu lực. Hãy xin link mới từ quản trị viên.');
-function active(link: DocumentData | undefined) {
+function active(link: DocumentData | null | undefined) {
   return !!link && !link.revoked && link.expiresAtMs > Date.now();
 }
 export async function previewJoin(body: Record<string, unknown>) {
@@ -42,9 +42,28 @@ export async function mutateJoining(uid: string, body: Record<string, unknown>) 
   const newToken = action === 'createLink' ? randomBytes(32).toString('hex') : '';
   return store.runTransaction(
     async (tx) => {
-      if (action === 'submit') {
+      if (action === 'submit' || action === 'submitPrivate') {
+        const account = (await tx.get(store.doc('accounts/' + uid))).data();
+        if (!account?.complete)
+          throw new ApiError(403, 'Hoàn tất tài khoản trước khi gửi yêu cầu.');
         const hash = tokenHash(body.token);
-        const link = (await tx.get(store.doc('joinLinks/' + hash))).data();
+        const privateInvite =
+          action === 'submitPrivate'
+            ? (await tx.get(store.doc('invitations/' + body.token))).data()
+            : null;
+        const link = privateInvite
+          ? { ...privateInvite, version: 1, expiresAtMs: privateInvite.expiresAt.toMillis() }
+          : action === 'submitPrivate'
+            ? null
+            : (await tx.get(store.doc('joinLinks/' + hash))).data();
+        if (privateInvite) {
+          const creator = (
+            await tx.get(
+              store.doc('memberships/' + privateInvite.clanId + '_' + privateInvite.createdBy),
+            )
+          ).data();
+          if (privateInvite.acceptedBy || creator?.role !== 'admin') throw unavailable();
+        }
         if (!active(link)) throw unavailable();
         const clanId = id(link!.clanId);
         const [clan, member, existing] = await Promise.all([
@@ -62,8 +81,12 @@ export async function mutateJoining(uid: string, body: Record<string, unknown>) 
             409,
             'Yêu cầu đã bị từ chối. Hãy trao đổi với quản trị viên để nhận link đăng ký mới.',
           );
-        const displayName = text(body.displayName, 2, 80),
-          message = text(body.message, 5, 300);
+        const displayName =
+            action === 'submitPrivate' ? account.displayName : text(body.displayName, 2, 80),
+          message =
+            action === 'submitPrivate'
+              ? 'Yêu cầu tham gia từ lời mời riêng. Cần admin xác nhận.'
+              : text(body.message, 5, 300);
         tx.set(existing.ref, {
           uid,
           clanId,
@@ -79,6 +102,7 @@ export async function mutateJoining(uid: string, body: Record<string, unknown>) 
           resolution: '',
           reviewedBy: null,
           reviewedAt: null,
+          privateToken: action === 'submitPrivate' ? body.token : null,
         });
         return { status: 'pending', clanId };
       }
@@ -142,16 +166,40 @@ export async function mutateJoining(uid: string, body: Record<string, unknown>) 
         if (body.decision !== 'approve' && body.decision !== 'reject')
           throw new ApiError(400, 'Lựa chọn không hợp lệ.');
         const memberRef = store.doc('memberships/' + clanId + '_' + targetUid);
-        const [member, link] = await Promise.all([
+        const [member, link, targetAccount, lock] = await Promise.all([
           tx.get(memberRef),
-          tx.get(store.doc('joinLinks/' + request.linkHash)),
+          tx.get(
+            store.doc(
+              request.privateToken
+                ? 'invitations/' + request.privateToken
+                : 'joinLinks/' + request.linkHash,
+            ),
+          ),
+          tx.get(store.doc('accounts/' + targetUid)),
+          tx.get(store.doc('clans/' + clanId + '/membershipMeta/lock')),
         ]);
+        const privateCreator =
+          request.privateToken && link.exists
+            ? (
+                await tx.get(store.doc('memberships/' + clanId + '_' + link.data()!.createdBy))
+              ).data()
+            : null;
         if (body.decision === 'approve') {
-          if (!active(link.data()) || link.data()!.clanId !== clanId)
+          const linked = link.data();
+          const validLink = request.privateToken
+            ? linked &&
+              !linked.revoked &&
+              !linked.acceptedBy &&
+              linked.expiresAt.toMillis() > Date.now() &&
+              privateCreator?.role === 'admin'
+            : active(linked);
+          if (!validLink || linked!.clanId !== clanId)
             throw new ApiError(
               409,
               'Link của yêu cầu đã hết hạn hoặc bị thu hồi. Người gửi cần đăng ký lại bằng link mới.',
             );
+          if (!targetAccount.data()?.complete)
+            throw new ApiError(409, 'Người nhận chưa hoàn tất tài khoản.');
           if (!member.exists)
             tx.create(memberRef, {
               clanId,
@@ -161,6 +209,8 @@ export async function mutateJoining(uid: string, body: Record<string, unknown>) 
               joinedAt: FieldValue.serverTimestamp(),
               invitationId: 'join:' + request.linkHash + ':' + request.version,
             });
+          if (request.privateToken) tx.update(link.ref, { acceptedBy: targetUid });
+          tx.set(lock.ref, { version: (lock.data()?.version ?? 0) + 1 });
         }
         const status = body.decision === 'approve' ? 'approved' : 'rejected';
         tx.update(ref, {

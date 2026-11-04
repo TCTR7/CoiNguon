@@ -15,6 +15,7 @@ Chạy npm ci rồi npm run dev để mở ứng dụng local. Để thử /dong
 - [Hướng dẫn cho Codex](AGENTS.md)
 - [Kiến trúc đề xuất](docs/ARCHITECTURE.md)
 - [Thiết lập phát triển](docs/DEVELOPMENT.md)
+- [Đưa ứng dụng lên Internet: tạo tài khoản, thiết lập và phát hành](docs/DEPLOYMENT.md)
 - [Chiến lược kiểm thử](docs/TESTING.md)
 - [Automation theo tính năng và lệnh chạy](automation_test/README.md)
 - [Trạng thái và công việc tiếp theo](docs/ai_agents/PROJECT_STATE.md)

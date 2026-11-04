@@ -20,7 +20,7 @@ Hoàn thành khi: chạy local và điều hướng trên màn hình nhỏ đư�
 
 ## 2. Đăng nhập, dòng họ và phân quyền — FR-01
 
-- Đề xuất Google cho đăng nhập đầu tiên, tài khoản giả lập khi phát triển local; giải quyết OQ-01 trước tích hợp đăng nhập thật.
+- Phương án vừa thống nhất: Google + số điện thoại tự khai duy nhất, lời mời trong app và admin xác nhận trước cấp quyền. [Kế hoạch chi tiết đã duyệt](AUTH_MEMBERSHIP_PLAN.md); triển khai và kiểm thử local trước, Google thật là mốc riêng.
 - Tạo/chọn dòng họ, mời và quản lý thành viên.
 - Áp dụng quản trị viên, biên tập viên và thành viên tại lớp dữ liệu/backend.
 - Chốt tập trường riêng tư OQ-04 trước thiết kế schema hồ sơ.
@@ -58,7 +58,7 @@ Hoàn thành khi: đạt AC-07/08 và chạy xuyên suốt luồng MVP; phản h
 - Tác vụ nhắc 7/3 ngày, đổi lịch, retry và chống trùng; tích hợp push và hướng dẫn cấp quyền.
 - Tải hồ sơ/lịch để đọc offline, chặn ghi và xóa cache khi đăng xuất.
 - Hoàn thiện xuất dữ liệu, sao lưu và thử khôi phục trên môi trường riêng.
-- Kiểm tra Android/iPhone, 1.000 hồ sơ giả, mất mạng, mất quyền, bàn phím và phóng to chữ.
+- Kiểm tra Android/iPhone, ít nhất 5.000 hồ sơ giả, mất mạng, mất quyền, bàn phím và phóng to chữ.
 - Chốt ngân sách/region/hạn mức OQ-03 và chính sách dữ liệu trước cloud trả phí hoặc pilot dữ liệu thật.
 
 Hoàn thành khi: đạt AC-05/09/10/11, không hồi quy các AC trước và có bằng chứng kiểm tra thiết bị thực tế. Deploy cần phạm vi cho phép riêng.

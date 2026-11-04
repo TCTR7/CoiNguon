@@ -9,10 +9,12 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "build": "npm run typecheck && vite build && node scripts/build-service-worker.mjs",
+    "build:cloud": "npm run typecheck && node --experimental-strip-types scripts/prepare-cloud.mjs",
+    "build:local": "npm run typecheck && node scripts/prepare-local.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "vitest run",
+    "test": "vitest run && vitest run --config automation_test/vitest.backend.config.ts",
     "test:watch": "vitest",
     "test:e2e": "playwright test --config automation_test/playwright.config.ts",
     "emulators": "node scripts/firebase.mjs emulators:start --only auth,firestore,storage",
@@ -22,13 +24,17 @@
     "format:check": "prettier --check src backend automation_test scripts/*.mjs scripts/service-worker.js *.ts *.json eslint.config.js",
     "emulators:check": "node scripts/firebase.mjs emulators:exec --only auth,firestore,storage \"node scripts/check-emulators.mjs\"",
     "test:workspace": "node scripts/firebase.mjs emulators:exec --only auth,firestore \"node node_modules/@playwright/test/cli.js test --config automation_test/playwright.workspace.config.ts\"",
-    "api": "node --experimental-strip-types backend/server.ts",
+    "api": "node scripts/run-cloud.mjs",
     "test:genealogy": "npm run test:api",
     "preview:workspace": "node scripts/preview.mjs",
     "test:offline": "node scripts/firebase.mjs emulators:exec --only auth,firestore \"node node_modules/@playwright/test/cli.js test --config automation_test/playwright.offline.config.ts\"",
     "test:api": "node scripts/firebase.mjs emulators:exec --only auth,firestore \"node node_modules/vitest/vitest.mjs run --config automation_test/vitest.api.config.ts\"",
     "test:feature": "node automation_test/scripts/run-feature.mjs",
-    "test:all": "node automation_test/scripts/run-all.mjs"
+    "test:all": "node automation_test/scripts/run-all.mjs",
+    "db:seed": "node scripts/seed.mjs",
+    "db:reset-and-seed": "node scripts/with-emulators.mjs \"node scripts/seed.mjs\"",
+    "test:e2e:multi": "node scripts/with-emulators.mjs \"node node_modules/@playwright/test/cli.js test --config automation_test/playwright.workspace.config.ts\"",
+    "verify:all": "node scripts/with-emulators.mjs \"npm run db:reset-and-seed && npm run typecheck && npm run test:e2e && npm run test:e2e:multi\""
   },
   "dependencies": {
     "@fontsource/be-vietnam-pro": "5.3.0",

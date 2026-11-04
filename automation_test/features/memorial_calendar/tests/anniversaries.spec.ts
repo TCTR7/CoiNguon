@@ -64,6 +64,12 @@ test('a recipient accepts permanent responsibility explicitly', async ({ page, c
     await new MemorialCalendarPage(second).register('Người nhận mẫu');
     await second.goto(invite);
     await second.getByRole('button', { name: 'Đồng ý tham gia', exact: true }).click();
+    await page.bringToFront();
+    await page
+      .locator('.join-request')
+      .filter({ hasText: 'Yêu cầu tham gia từ lời mời riêng' })
+      .getByRole('button', { name: 'Duyệt tham gia', exact: true })
+      .click();
     const secondCalendar = second.getByRole('region', { name: 'Lịch giỗ dòng họ' });
     await expect(secondCalendar.locator('.host-name')).toContainText('Chủ sự mẫu');
     await page.bringToFront();

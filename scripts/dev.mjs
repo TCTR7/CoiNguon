@@ -1,8 +1,18 @@
 import { spawn } from 'node:child_process';
 const children = [
-  spawn(process.execPath, ['--experimental-strip-types', 'backend/server.ts'], {
-    stdio: 'inherit',
-  }),
+  spawn(
+    process.execPath,
+    ['--env-file-if-exists=.env.local', '--experimental-strip-types', 'backend/server.ts'],
+    {
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        PORT: '8787',
+        ALLOWED_ORIGINS:
+          process.env.ALLOWED_ORIGINS || 'http://127.0.0.1:5173,http://localhost:5173',
+      },
+    },
+  ),
 ];
 let stopping = false;
 function stop(code = 0) {

@@ -4,6 +4,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const env = { ...process.env, DEBUG: '' }; // Avoid inherited DEBUG enabling verbose CLI/env output.
+Object.assign(env, {
+  APP_ENV: 'local',
+  APP_ROLE: 'api',
+  FIREBASE_PROJECT_ID: 'demo-coinguon',
+  VITE_APP_ENV: 'local',
+  VITE_FIREBASE_PROJECT_ID: 'demo-coinguon',
+  VITE_API_BASE_URL: 'http://127.0.0.1:8787/api',
+  PHONE_LOOKUP_HMAC_KEY: '',
+});
+delete env.K_SERVICE;
 // Keep the inherited key casing: Windows may supply Path instead of PATH.
 const pathKey = Object.keys(env).find((key) => key.toLowerCase() === 'path') ?? 'PATH';
 const javaDir = path.join(root, '.tools/java');

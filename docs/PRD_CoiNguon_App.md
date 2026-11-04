@@ -1,6 +1,6 @@
 # PRD — Cội Nguồn
 
-Phiên bản: 0.2 · Cập nhật: 2026-10-28 · Trạng thái: MVP đang triển khai local; tiến độ xem PROJECT_STATE.md.
+Phiên bản: 0.3 · Cập nhật: 2026-10-30 · Trạng thái: MVP đang triển khai local; tiến độ xem PROJECT_STATE.md.
 Tên làm việc: Cội Nguồn; tên thương mại chưa chốt. Nền tảng: PWA, ưu tiên di động.
 
 ## 1. Bài toán và mục tiêu
@@ -45,18 +45,23 @@ Mọi quyền gắn với một dòng họ; một tài khoản có thể tham gi
 - Người được ủy quyền một sự kiện: quản lý sự kiện đó, không thay thế chủ sự lâu dài.
 - Khách qua link: chỉ xem nội dung thiệp được công bố và phản hồi nhóm khách tương ứng; không được xem gia phả hoặc danh sách RSVP khác.
 
-
 Thủ quỹ và người duyệt chi chỉ được thiết kế khi triển khai giai đoạn quỹ. Quyền phải được kiểm tra ở lớp dữ liệu/backend, không chỉ ẩn nút trên UI.
 
 ## 4. Hồ sơ và quan hệ gia đình — FR-01, FR-02
+
+Phương thức pilot: đăng nhập Google và hoàn tất tên/số di động Việt Nam bắt buộc; một số chuẩn hóa chỉ liên kết một tài khoản Cội Nguồn tại một thời điểm. Số tự khai chưa xác minh quyền sở hữu; không dùng SMS hoặc OTP email. Đăng nhập Google không xác minh số điện thoại và không tự cấp quyền gia phả. Bản local dùng Google giả lập hoặc email .test cho fixture; Google thật cần cấu hình project và kiểm chứng riêng.
 
 Tài khoản đăng nhập khác hồ sơ người. Hồ sơ không bắt buộc có tài khoản; người đã khuất và trẻ nhỏ vẫn có hồ sơ. MVP lưu hồ sơ độc lập trong từng dòng họ; không tự đồng bộ người trùng giữa họ nội và họ ngoại.
 
 Người tạo gia phả là quản trị viên ban đầu, không bắt buộc là trưởng tộc hoặc người gốc của cây; có thể thêm hồ sơ người đã mất và cấp admin cho tài khoản thành viên khác. Không bắt buộc liên kết tài khoản với hồ sơ để tham gia. Bàn giao bằng cách cấp quyền admin cho thành viên khác, sau đó người tạo có thể hạ quyền hoặc rời gia phả. Admin khác cũng có thể đổi quyền/gỡ người tạo. Luôn giữ ít nhất một admin, kể cả khi thao tác đồng thời; tên người tạo không tạo đặc quyền vĩnh viễn. Rời gia phả không xóa hồ sơ người hoặc quan hệ. Người quay lại cần được mời/duyệt mới, không tự khôi phục quyền cũ.
 
-Admin tạo link đăng ký dùng chung để tự chia sẻ lên nhóm Zalo. Người mở link chỉ thấy tên gia phả và form đăng ký; đăng nhập rồi gửi tên cùng lời giới thiệu quan hệ gia đình. Yêu cầu chờ duyệt không cấp quyền đọc gia phả. Admin duyệt từng người; khi được duyệt, tài khoản nhận vai trò thành viên trong đúng gia phả, không tự nhận hồ sơ hoặc quyền admin. Người không có membership không được xem cây, hồ sơ hoặc danh sách thành viên, kể cả khi biết ID gia phả.
+Luồng chính: admin chọn hồ sơ còn sống, nhập số và chủ động tạo lời mời trong app. Lưu số liên hệ riêng không tự gửi mời. Mời trước đăng ký được giữ chờ; khi tài khoản khai số tương ứng, hộp thư chỉ hiện thông báo tối thiểu và mã tham chiếu, chưa lộ gia phả/hồ sơ. Người nhận phản hồi “Đây là tôi” hoặc từ chối; admin xem tên/email từ Auth và đối chiếu qua kênh đã biết trước khi duyệt. Duyệt tạo membership member và liên kết hồ sơ nguyên tử; giữ nguyên quyền của người đã là thành viên. Không mời hồ sơ đã mất/chưa rõ còn sống/lưu trữ/đã liên kết. Số liên hệ chỉ dành cho admin, tách khỏi hồ sơ mà thành viên thường đọc.
 
-Link chung local có hạn 30 ngày, có thể thu hồi hoặc thay mới; link cũ mất hiệu lực và yêu cầu từ link cũ không được duyệt tiếp. Việc thu hồi link không xóa quyền người đã được duyệt. Gửi lặp không tạo thêm yêu cầu; duyệt và cấp membership là một giao dịch nguyên tử. Người gửi xem trạng thái và có thể rút yêu cầu chờ. Sau từ chối cần trao đổi với admin và dùng link mới để gửi lại. Lời mời riêng dùng một lần vẫn dành cho người admin đã xác nhận trước, không dùng để đăng công khai trong nhóm. Link đăng ký khác link thiệp/RSVP.
+Đổi số cần đăng nhập lại, không xóa tài khoản hoặc chuyển membership. Lời mời đã gắn với lần khai số cũ không chuyển sang người nhận số đó sau này; cần admin mời lại. Trùng/chiếm số được hỗ trợ thủ công bởi người vận hành, không tự gộp tài khoản. MVP dùng một Google account/tài khoản; liên kết Google thứ hai chưa thuộc đợt này. Lời mời theo số không tự hết hạn theo ngày, có thể thu hồi; hồ sơ không còn hợp lệ hoặc người tạo mất quyền admin làm lời mời chưa hoàn tất mất hiệu lực.
+
+Lối phụ qua link: admin tạo link đăng ký dùng chung để tự chia sẻ lên nhóm Zalo. Người mở link chỉ thấy tên gia phả và form đăng ký; đăng nhập rồi gửi tên cùng lời giới thiệu quan hệ gia đình. Yêu cầu chờ duyệt không cấp quyền đọc gia phả. Admin duyệt từng người; khi được duyệt, tài khoản nhận vai trò thành viên trong đúng gia phả, không tự nhận hồ sơ hoặc quyền admin. Người không có membership không được xem cây, hồ sơ hoặc danh sách thành viên, kể cả khi biết ID gia phả.
+
+Link chung local có hạn 30 ngày, có thể thu hồi hoặc thay mới; link cũ mất hiệu lực và yêu cầu từ link cũ không được duyệt tiếp. Việc thu hồi link không xóa quyền người đã được duyệt. Gửi lặp không tạo thêm yêu cầu; duyệt và cấp membership là một giao dịch nguyên tử. Người gửi xem trạng thái và có thể rút yêu cầu chờ. Sau từ chối cần trao đổi với admin và dùng link mới để gửi lại. Link mời riêng dùng một lần cũng tạo yêu cầu chờ duyệt, không trực tiếp cấp member/editor; không đăng công khai trong nhóm. Link đăng ký khác link thiệp/RSVP.
 
 Hồ sơ gồm tên hiển thị, tên khác nếu có, trạng thái còn sống/đã mất/chưa rõ, ngày sinh/mất, ảnh tùy chọn, tiểu sử, thông tin mộ phần tùy chọn. Lưu ngày gốc, loại lịch, mức độ đầy đủ và nguồn thông tin; không tự điền ngày/tháng/năm còn thiếu. Thông tin chưa xác minh phải được đánh dấu.
 
@@ -64,7 +69,7 @@ Quan hệ được lưu riêng, hỗ trợ cha/mẹ–con với loại sinh họ
 
 Người dùng gửi đề nghị liên kết tài khoản với hồ sơ; quản trị viên xác nhận. Một hồ sơ có tối đa một tài khoản liên kết đang hoạt động trong MVP. Nhận hồ sơ không tự cấp quyền biên tập. Cảnh báo tên/ngày trùng chỉ gợi ý kiểm tra, không tự gộp.
 
-Hiển thị danh sách tìm kiếm bên cạnh sơ đồ; người dùng không phải kéo cây lớn để tìm người. Đời được tính theo gốc hiển thị và quan hệ đã xác minh; không hiển thị một số đời chắc chắn khi dữ liệu chưa đủ. Chi có thể là nhãn lọc; phân cấp Tộc/Chi/Phái đầy đủ để sau MVP.
+Hiển thị danh sách tìm kiếm bên cạnh sơ đồ; người dùng không phải kéo cây lớn để tìm người. Sơ đồ phải kéo/cuộn và thu phóng được trên máy tính/điện thoại, mở/thu nhánh và mở thêm thế hệ. Không ấn định trần số người hoặc số thế hệ trong chức năng gia phả; dữ liệu tăng không yêu cầu sửa hằng số trong code. Chỉ dựng phần đang xem, giữ danh sách dễ đọc để định vị người ở cây lớn. Đời được tính theo gốc hiển thị và quan hệ đã xác minh; không hiển thị một số đời chắc chắn khi dữ liệu chưa đủ. Chi có thể là nhãn lọc; phân cấp Tộc/Chi/Phái đầy đủ để sau MVP.
 
 ## 5. Lịch giỗ và sự kiện — FR-03
 
@@ -123,6 +128,7 @@ Quản trị viên có thể xuất dữ liệu gia phả cơ bản ở định 
 
 - AC-01 (FR-01): Thành viên dòng họ A không đọc/ghi dữ liệu B bằng cách đổi ID hoặc gọi trực tiếp API; không thể tự nâng quyền hay loại bỏ quản trị viên cuối, kể cả khi hai admin hạ quyền/rời/gỡ nhau đồng thời. Người tạo có thể bàn giao và không còn quyền quản trị sau khi hạ quyền hoặc rời.
 - AC-01b (FR-01): Nhiều tài khoản dùng cùng link nhưng phải được duyệt riêng; người chờ/từ chối không đọc được gia phả; không tự nâng quyền; gửi/duyệt lặp không cấp trùng; link hết hạn/thu hồi chặn đăng ký và duyệt tại backend.
+- AC-01c (FR-01): Mời theo số trước/sau đăng ký đều vào đúng tài khoản khai số; chưa duyệt không có quyền hoặc DTO lộ gia phả. Số 0/+84 là một, trùng/đổi số/đồng thời không chuyển lời mời hoặc quyền sang người khác. Duyệt phải tái kiểm tra admin, hồ sơ, UID, phiên bản số và không tạo trùng membership/personLink; client không ghi trực tiếp account/chỉ mục/membership mời.
 - AC-02 (FR-02): Tạo được hồ sơ không có tài khoản, ngày chỉ có năm, cha/mẹ chưa rõ, con nuôi và tái hôn; từ chối vòng lặp tổ tiên.
 - AC-03 (FR-02): Hai người sửa cùng phiên bản không âm thầm ghi đè; người sau được yêu cầu tải lại/giải quyết xung đột.
 - AC-04 (FR-03): Có ca kiểm thử lịch âm thường, tháng nhuận, ngày 30 thiếu, thiếu năm và người xem ở múi giờ khác. Không gửi nhắc khi ngày chưa được xác nhận.
@@ -138,7 +144,7 @@ Quản trị viên có thể xuất dữ liệu gia phả cơ bản ở định 
 
 Chữ dễ đọc, nút có nhãn rõ, mục tiêu vùng chạm tối thiểu 44×44 CSS px; không chỉ dùng màu để biểu đạt trạng thái. Có tìm kiếm/danh sách thay cho thao tác cây; xác nhận trước thao tác xóa. Kiểm thử bàn phím, phóng to chữ và điện thoại màn hình nhỏ.
 
-Mục tiêu kiểm thử đề xuất: dòng họ 1.000 hồ sơ giả lập; tải phần đầu cây thay vì render tất cả; tìm kiếm và mở hồ sơ phản hồi trong 2 giây trên cấu hình thử được ghi lại. Đây là mục tiêu pilot, chưa phải SLA hay lời hứa gói dịch vụ.
+Mục tiêu kiểm thử: ít nhất 5.000 hồ sơ giả lập trên trình duyệt, kiểm tra thuật toán với tập lớn hơn; tải phần đầu cây thay vì render tất cả; tìm kiếm và mở hồ sơ hướng tới phản hồi trong 2 giây trên cấu hình thử được ghi lại. Không có trần hồ sơ cố định không đồng nghĩa hạ tầng vô hạn: giới hạn dung lượng tệp, ngân sách, độ trễ và năng lực thiết bị phải được đo riêng. Đây là mục tiêu pilot, chưa phải SLA hay lời hứa gói dịch vụ.
 
 Pilot đề xuất 3–5 gia đình/chi họ. Đo: hoàn thành tạo dòng họ + 20 hồ sơ + một sự kiện; thời gian nhập dữ liệu; số nhóm RSVP/số nhóm được mời; số chủ sự quay lại tổ chức sự kiện tiếp theo. Không dùng DAU làm chỉ số duy nhất cho sản phẩm theo mùa vụ. Chỉ đặt ngưỡng thành công thương mại sau khi có số liệu pilot; không ghi nội dung riêng tư vào analytics.
 
@@ -148,7 +154,7 @@ Hướng ban đầu: PWA + Firebase. Baseline đề xuất: React + TypeScript +
 
 Các quyết định phải giải quyết trước phần triển khai liên quan:
 
-- OQ-01: Chọn phương thức đăng nhập phù hợp người dùng pilot. Google là đề xuất đầu; OTP cần ngân sách/chống lạm dụng; Zalo cần khảo sát tích hợp, không coi là provider có sẵn.
+- OQ-01: Đã chọn Google + số điện thoại tự khai duy nhất và admin đối chiếu khi duyệt. Không SMS/OTP email; còn kiểm chứng Google thật và trải nghiệm thiết bị pilot. Chi tiết tại [plan đăng nhập/tham gia](AUTH_MEMBERSHIP_PLAN.md).
 - OQ-02: Chốt UX chọn quy tắc giỗ đặc biệt với gia đình pilot và bộ dữ liệu đối chiếu lịch.
 - OQ-03: Chốt ngân sách tháng, region, hạn mức ảnh/hồ sơ, lưu giữ dữ liệu và người vận hành trước khi bật dịch vụ tính phí.
 - OQ-04: Xác nhận phân loại trường riêng tư, quy trình xóa dữ liệu và xử lý tranh chấp trước dữ liệu thật.
