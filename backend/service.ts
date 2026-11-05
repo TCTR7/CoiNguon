@@ -1,5 +1,5 @@
 import { sameDate } from '../src/shared/domain/anniversary.ts';
-import { initializeApp, applicationDefault } from 'firebase-admin/app';
+import { initializeApp, applicationDefault, cert } from 'firebase-admin/app';
 import { runtime } from './config.ts';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, FieldValue, type DocumentData } from 'firebase-admin/firestore';
@@ -13,10 +13,22 @@ if (runtime.local) {
   process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
   process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
 }
+function resolveCredential() {
+  if (runtime.local) return undefined;
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    try {
+      return cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT));
+    } catch {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT không đúng định dạng JSON.');
+    }
+  }
+  return applicationDefault();
+}
+const appCredential = resolveCredential();
 const app = initializeApp(
   {
     projectId: runtime.projectId,
-    ...(!runtime.local ? { credential: applicationDefault() } : {}),
+    ...(appCredential ? { credential: appCredential } : {}),
   },
   'genealogy-local',
 );

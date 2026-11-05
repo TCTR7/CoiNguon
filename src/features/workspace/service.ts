@@ -255,6 +255,8 @@ export function friendlyError(error: unknown) {
     return 'Trình duyệt đang chặn cửa sổ đăng nhập. Hãy cho phép popup hoặc mở bằng trình duyệt hệ thống.';
   if (code === 'auth/configuration-not-found')
     return 'Chưa cấu hình Google Sign-In trên Firebase Console (Authentication > Sign-in method > Google).';
+  if (code === 'auth/unauthorized-domain')
+    return `Tên miền hiện tại (${typeof window !== 'undefined' ? window.location.hostname : 'này'}) chưa được thêm vào Authorized domains trên Firebase Console (Authentication > Settings > Authorized domains).`;
   if (code === 'auth/user-mismatch')
     return 'Hãy chọn đúng tài khoản Google đang đăng nhập để xác nhận đổi số.';
   if (code === 'permission-denied')
