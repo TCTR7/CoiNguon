@@ -85,6 +85,10 @@ test('navigate 5000 synthetic profiles without rendering the entire tree or chan
     exact: true,
   });
   await viewport.scrollIntoViewIfNeeded();
+  // Opening now fits the branch; explicitly focus a person before testing detail controls.
+  await expect(page.getByLabel('Mức phóng sơ đồ', { exact: true })).not.toHaveText('100%');
+  await page.getByRole('button', { name: 'Định vị Người Mẫu 00000', exact: true }).click();
+  await expect(page.getByLabel('Mức phóng sơ đồ', { exact: true })).toHaveText('100%');
   await expect(
     page.getByRole('button', { name: 'Xem hồ sơ Người Mẫu 00000', exact: true }),
   ).toBeVisible();
@@ -138,9 +142,11 @@ test('navigate 5000 synthetic profiles without rendering the entire tree or chan
     await page
       .getByLabel('Gốc nhánh đang xem', { exact: true })
       .selectOption({ label: 'Người Mẫu 00000' });
-    await page.locator('.family-tree-workspace').screenshot({
-      path: resolve(repoRoot, 'automation_test/artifacts/genealogy_large_desktop.png'),
-    });
+    if (process.env.AI_AGENT !== '1') {
+      await page.locator('.family-tree-workspace').screenshot({
+        path: resolve(repoRoot, 'automation_test/artifacts/genealogy_large_desktop.png'),
+      });
+    }
   }
   await page.setViewportSize({ width: 320, height: 740 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

@@ -57,7 +57,7 @@ export function FamilyTree({
   );
   const viewport = useRef<HTMLDivElement>(null),
     canvas = useRef<HTMLCanvasElement>(null);
-  const [size, setSize] = useState({ width: 800, height: 620 });
+  const [size, setSize] = useState({ width: 0, height: 0 });
   const [pose, setPose] = useState<Pose>({ x: 0, y: 0, scale: 1 });
   const poseRef = useRef(pose);
   useLayoutEffect(() => {
@@ -72,6 +72,7 @@ export function FamilyTree({
     moved: boolean;
   } | null>(null);
   const initialized = useRef('');
+  const pendingFocus = useRef('');
   const anchor = useRef<{ root: string; x: number; y: number } | null>(null);
   const page = Math.min(resultPage, Math.max(0, Math.ceil(results.length / 20) - 1));
   const rootChoices = [
@@ -92,14 +93,17 @@ export function FamilyTree({
     height: size.height / pose.scale,
   };
   const visible = visibleTreeNodes(layout, world);
-  const overview = pose.scale < 1;
+  const overview = pose.scale < 0.85 && layout.nodes.length > 60;
   const centerNode = (node: TreeNode) =>
     setPose({ scale: 1, x: size.width / 2 - node.x - CARD_WIDTH / 2, y: 55 - node.y });
   const focusPerson = (id: string) => {
     onChoose(id);
     const node = layout.byId.get(id);
     if (node) centerNode(node);
-    else changeRoot(id);
+    else {
+      pendingFocus.current = id;
+      changeRoot(id);
+    }
   };
   function changeRoot(id: string) {
     onChoose(id);
@@ -140,7 +144,11 @@ export function FamilyTree({
         1,
       ),
     );
-    setPose({ scale, x: (size.width - layout.width * scale) / 2, y: 20 });
+    setPose({
+      scale,
+      x: (size.width - layout.width * scale) / 2,
+      y: (size.height - layout.height * scale) / 2,
+    });
   }
   useEffect(() => {
     const element = viewport.current;
@@ -176,11 +184,27 @@ export function FamilyTree({
     };
   }, []);
   useEffect(() => {
-    if (!root) return;
+    if (!root || !size.width || !size.height) return;
     const node = layout.byId.get(root);
     if (!node) return;
     if (initialized.current !== root) {
-      setPose({ scale: 1, x: size.width / 2 - node.x - CARD_WIDTH / 2, y: 40 - node.y });
+      const scale = boundedScale(
+        Math.min(
+          (size.width - 40) / Math.max(1, layout.width),
+          (size.height - 40) / Math.max(1, layout.height),
+          1,
+        ),
+      );
+      if (pendingFocus.current === root) {
+        setPose({ scale: 1, x: size.width / 2 - node.x - CARD_WIDTH / 2, y: 55 - node.y });
+        pendingFocus.current = '';
+      } else {
+        setPose({
+          scale,
+          x: (size.width - layout.width * scale) / 2,
+          y: (size.height - layout.height * scale) / 2,
+        });
+      }
       initialized.current = root;
     } else if (anchor.current?.root === root) {
       const dx = anchor.current.x - node.x,
@@ -193,7 +217,7 @@ export function FamilyTree({
         }));
     }
     anchor.current = { root, x: node.x, y: node.y };
-  }, [root, layout, size.width]);
+  }, [root, layout, size.width, size.height]);
   useEffect(() => {
     const element = canvas.current,
       context = element?.getContext('2d');

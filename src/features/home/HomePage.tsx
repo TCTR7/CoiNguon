@@ -12,7 +12,7 @@ import { HeritageIllustration } from '../../shared/ui/Illustrations';
 import { demoEvent, people } from '../../shared/data/demo';
 export default function HomePage() {
   return (
-    <>
+    <div className="home-page">
       <section className="welcome">
         <div>
           <p className="eyebrow">
@@ -23,10 +23,7 @@ export default function HomePage() {
             <br />
             <em>Tiếp nối yêu thương.</em>
           </h1>
-          <p className="welcome-copy">
-            Mỗi người là một nhánh, mỗi ký ức là một phần của gia đình. Cùng lưu giữ để những thế hệ
-            sau luôn biết đường trở về.
-          </p>
+          <p className="welcome-copy">Lưu giữ gia phả, tìm người thân và cùng nhau nhớ ngày giỗ.</p>
           <Link className="button primary" to="/gia-pha">
             <BookOpen size={19} /> Khám phá gia phả <ArrowRight size={18} />
           </Link>
@@ -48,6 +45,18 @@ export default function HomePage() {
           <span className="art-caption">Nơi chúng ta bắt đầu.</span>
         </div>
       </section>
+      <nav className="home-shortcuts" aria-label="Truy cập nhanh">
+        <Link to="/dong-ho">
+          <Users size={24} />
+          <span>Dòng họ của tôi</span>
+          <ArrowRight size={18} />
+        </Link>
+        <Link to="/lich-gio">
+          <CalendarDays size={24} />
+          <span>Xem lịch giỗ</span>
+          <ArrowRight size={18} />
+        </Link>
+      </nav>
       <div className="section-heading">
         <div>
           <p className="eyebrow">CÙNG NHAU GHI NHỚ</p>
@@ -137,6 +146,6 @@ export default function HomePage() {
         <Users size={18} />
         <span>Gia phả được gìn giữ từ những điều nhỏ, bởi tất cả chúng ta.</span>
       </div>
-    </>
+    </div>
   );
 }

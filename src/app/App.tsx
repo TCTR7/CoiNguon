@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { PwaBanner } from '../features/preparedness/PwaBanner';
+import { InstallApp } from '../features/preparedness/InstallApp';
 import HomePage from '../features/home/HomePage';
 import PeoplePage from '../features/people/PeoplePage';
 import ProfilePage from '../features/people/ProfilePage';
@@ -72,6 +73,7 @@ export default function App() {
               ))}
             </nav>
           )}
+          <InstallApp />
           <button
             className="account-button"
             onClick={() => dialog.current?.showModal()}

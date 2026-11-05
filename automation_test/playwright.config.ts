@@ -1,13 +1,20 @@
 import { resolve } from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 import { repoRoot } from './common_setup/paths.ts';
+
+const isAiAgent = process.env.AI_AGENT === '1';
+
 export default defineConfig({
   testDir: resolve(repoRoot, 'automation_test/features'),
   testMatch: '**/ui_quality/tests/*.spec.ts',
   outputDir: resolve(repoRoot, 'automation_test/artifacts/test-results'),
   fullyParallel: true,
-  reporter: 'list',
-  use: { baseURL: 'http://127.0.0.1:5173' },
+  reporter: isAiAgent ? [['line']] : 'list',
+  maxFailures: isAiAgent ? 1 : undefined,
+  use: {
+    baseURL: 'http://127.0.0.1:5173',
+    ...(isAiAgent ? { screenshot: 'off', video: 'off', trace: 'off' } : {}),
+  },
   webServer: {
     env: {
       APP_ENV: 'local',

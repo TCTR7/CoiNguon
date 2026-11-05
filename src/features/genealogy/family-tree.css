@@ -285,3 +285,36 @@
     max-width: none;
   }
 }
+
+@media (max-width: 600px) {
+  .tree-stage {
+    display: flex;
+    flex-direction: column;
+  }
+  .tree-control-bar {
+    order: 0;
+  }
+  .tree-caption {
+    order: 1;
+  }
+  .tree-bottom-bar {
+    order: 2;
+  }
+  .tree-help {
+    order: 3;
+  }
+  .family-tree-viewport {
+    order: 4;
+    height: clamp(320px, 55dvh, 540px);
+  }
+  .tree-legend {
+    order: 5;
+  }
+  .tree-stage > .subtle {
+    order: 6;
+  }
+  .tree-zoom button {
+    width: 56px;
+    min-height: 48px;
+  }
+}

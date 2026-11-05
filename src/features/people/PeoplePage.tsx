@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, List, Network, Search } from 'lucide-react';
 import { people } from '../../shared/data/demo';
+import { ZoomableTree } from './ZoomableTree';
 export default function PeoplePage() {
   const [search, setSearch] = useState('');
   const [view, setView] = useState<'list' | 'tree'>('list');
@@ -42,12 +43,7 @@ export default function PeoplePage() {
       {view === 'tree' && !search ? (
         <>
           <p className="subtle">Sơ đồ nhánh mẫu · Chạm vào tên để xem hồ sơ.</p>
-          <div
-            className="tree-scroll"
-            role="region"
-            aria-label="Sơ đồ gia đình mẫu, có thể cuộn ngang"
-            tabIndex={0}
-          >
+          <ZoomableTree>
             <div className="family-tree">
               <div className="tree-row">
                 {people.slice(0, 2).map((p) => (
@@ -79,7 +75,7 @@ export default function PeoplePage() {
                 ))}
               </div>
             </div>
-          </div>
+          </ZoomableTree>
           <p className="subtle">
             Minh họa các thế hệ; sơ đồ quan hệ đầy đủ sẽ được tích hợp ở bước gia phả.
           </p>

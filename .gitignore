@@ -11,3 +11,5 @@ test-results/
 *-debug.log*
 .tools/
 .DS_Store
+automation_test/artifacts/
+.codegraph/

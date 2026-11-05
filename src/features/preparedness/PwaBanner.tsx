@@ -9,7 +9,7 @@ export function PwaBanner() {
     [error, setError] = useState('');
   const enabled = ['/dong-ho', '/ngoai-tuyen'].includes(pathname);
   useEffect(() => {
-    if (!enabled || !import.meta.env.PROD || !('serviceWorker' in navigator)) return;
+    if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return;
     let active = true;
     let reg: ServiceWorkerRegistration | undefined;
     const change = () => {
@@ -37,7 +37,7 @@ export function PwaBanner() {
       active = false;
       navigator.serviceWorker.removeEventListener('controllerchange', change);
     };
-  }, [enabled]);
+  }, []);
   if (!enabled || !import.meta.env.PROD) return null;
   return (
     <aside className="notice pwa-banner" aria-label="Cài ứng dụng">

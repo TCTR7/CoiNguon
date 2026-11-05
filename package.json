@@ -34,7 +34,9 @@
     "db:seed": "node scripts/seed.mjs",
     "db:reset-and-seed": "node scripts/with-emulators.mjs \"node scripts/seed.mjs\"",
     "test:e2e:multi": "node scripts/with-emulators.mjs \"node node_modules/@playwright/test/cli.js test --config automation_test/playwright.workspace.config.ts\"",
-    "verify:all": "node scripts/with-emulators.mjs \"npm run db:reset-and-seed && npm run typecheck && npm run test:e2e && npm run test:e2e:multi\""
+    "verify:all": "node scripts/with-emulators.mjs \"npm run db:reset-and-seed && npm run typecheck && npm run test:e2e && npm run test:e2e:multi\"",
+    "test:ai:unit": "vitest run --reporter=dot --bail=1",
+    "test:ai:e2e": "playwright test --config automation_test/playwright.ai.config.ts --reporter=line --max-failures=1 --trace=off"
   },
   "dependencies": {
     "@fontsource/be-vietnam-pro": "5.3.0",

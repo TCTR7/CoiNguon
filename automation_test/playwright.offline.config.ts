@@ -1,8 +1,23 @@
 import { defineConfig } from '@playwright/test';
 import base from './playwright.config.ts';
 import { repoRoot } from './common_setup/paths.ts';
+
+const isAiAgent = process.env.AI_AGENT === '1';
+
 export default defineConfig({
   ...base,
+  ...(isAiAgent
+    ? {
+        maxFailures: 1,
+        reporter: [['line']],
+        use: {
+          ...base.use,
+          screenshot: 'off',
+          video: 'off',
+          trace: 'off',
+        },
+      }
+    : {}),
   testMatch: '**/offline_backup/tests/*.spec.ts',
   timeout: 90000,
   workers: 1,
