@@ -118,10 +118,7 @@ export function DataPanel({ membership }: { membership: Membership }) {
         </p>
       )}
       <h3>Đọc khi mất mạng</h3>
-      <p>
-        Chỉ lưu hồ sơ chữ, quan hệ và lịch; không lưu ảnh, danh sách khách, token mời hoặc quyền
-        quản trị. Chế độ ngoại tuyến không có thao tác ghi.
-      </p>
+      <p>Đọc hồ sơ và lịch đã tải khi mất mạng.</p>
       <label className="preparedness-check">
         <input type="checkbox" checked={trusted} onChange={(e) => setTrusted(e.target.checked)} />{' '}
         Đây là thiết bị riêng tôi tin cậy. Tôi đồng ý lưu dữ liệu và duy trì đăng nhập trên thiết bị
@@ -163,10 +160,6 @@ export function DataPanel({ membership }: { membership: Membership }) {
           {saved.people.length} hồ sơ · {saved.events.length} sự kiện.
         </p>
       )}
-      <p className="subtle">
-        Tải lại trang khi mất mạng cần bản build PWA đã mở ít nhất một lần. Bản chạy dev chỉ đọc
-        được trong trang đang mở; trình duyệt có thể dọn dữ liệu đã lưu.
-      </p>
       {membership.role === 'admin' && (
         <details>
           <summary>Xuất bản sao & khôi phục thử</summary>

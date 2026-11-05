@@ -126,10 +126,6 @@ export function RemindersPanel({ membership }: { membership: Membership }) {
         Nhắc trước 7 và 3 ngày, lúc 09:00 theo múi giờ tổ chức. Lịch vừa công bố sau mốc nhắc sẽ
         không gửi bù.
       </p>
-      <p className="subtle">
-        Bản local tạo hộp nhắc trên Emulator. Thông báo trình duyệt thử cần mở ứng dụng; chưa có
-        push nền khi đóng app.
-      </p>
       {error && (
         <p role="alert" className="form-error">
           {error}

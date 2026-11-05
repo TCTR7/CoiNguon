@@ -116,12 +116,6 @@ export function PhoneInvites({
             : 'Lời mời theo số điện thoại'
           : 'Lời mời của tôi'}
       </h2>
-      {!clanId && (
-        <p>
-          Số tự khai chưa xác minh. Chỉ mở gia phả sau khi bạn phản hồi và admin xác nhận đúng
-          người.
-        </p>
-      )}
       {error && (
         <p role="alert" className="form-error">
           {error}

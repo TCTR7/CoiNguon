@@ -102,10 +102,6 @@ export default function GenealogyPanel({
           </button>
         )}
       </div>
-      <p className="subtle">
-        Hồ sơ được lưu riêng trong dòng họ đang chọn. Người thân không cần có tài khoản để xuất hiện
-        trong gia phả.
-      </p>
       {error && (
         <p className="form-error" role="alert">
           {error}
@@ -116,6 +112,25 @@ export default function GenealogyPanel({
       ) : (
         data && (
           <>
+            {editing && (
+              <PersonForm
+                key={editing.key}
+                clanId={membership.clanId}
+                initial={editing.initial}
+                personId={editing.id}
+                version={editing.version}
+                existingPeople={people}
+                onSaved={(id) => {
+                  setEditing(null);
+                  setSelectedId(id);
+                }}
+                onCancel={() => setEditing(null)}
+                onReload={() => {
+                  const latest = people.find((p) => p.id === editing.id);
+                  if (latest) edit(latest);
+                }}
+              />
+            )}
             <div className="genealogy-toolbar">
               <label className="search-field">
                 <Search size={20} />
@@ -223,25 +238,6 @@ export default function GenealogyPanel({
                   </div>
                 )}
               </>
-            )}
-            {editing && (
-              <PersonForm
-                key={editing.key}
-                clanId={membership.clanId}
-                initial={editing.initial}
-                personId={editing.id}
-                version={editing.version}
-                existingPeople={people}
-                onSaved={(id) => {
-                  setEditing(null);
-                  setSelectedId(id);
-                }}
-                onCancel={() => setEditing(null)}
-                onReload={() => {
-                  const latest = people.find((p) => p.id === editing.id);
-                  if (latest) edit(latest);
-                }}
-              />
             )}
             {selected && !editing && (
               <article className="paper-panel family-person-detail">

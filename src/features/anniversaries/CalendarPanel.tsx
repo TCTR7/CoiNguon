@@ -612,10 +612,6 @@ export function CalendarPanel({
             })}
         </>
       )}
-      <p className="subtle">
-        Công bố trong dòng họ trên máy thử. Thiệp khách và phản hồi theo hộ có thể dùng qua link
-        local; hộp nhắc chạy khi API đang mở, chưa có push nền.
-      </p>
     </section>
   );
 }

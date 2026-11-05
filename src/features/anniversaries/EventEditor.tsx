@@ -180,10 +180,6 @@ export function EventEditor({
             />
           </label>
         </fieldset>
-        <p className="subtle">
-          Đổi hoặc hủy sự kiện làm mất hiệu lực phiên bản lịch nhắc cũ. Bản local chưa gửi thông
-          báo.
-        </p>
         <div className="button-row">
           <button className="button primary" disabled={busy || stale}>
             {busy ? 'Đang lưu…' : 'Lưu buổi giỗ'}

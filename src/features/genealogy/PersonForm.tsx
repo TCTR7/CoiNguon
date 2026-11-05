@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import {
   blankPerson,
   formatFamilyDate,
@@ -28,6 +28,12 @@ export function PersonForm({
   onCancel: () => void;
   onReload?: () => void;
 }) {
+  const editorRef = useRef<HTMLElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    nameRef.current?.focus({ preventScroll: true });
+    editorRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
+  }, []);
   const [fields, setFields] = useState<PersonFields>(() => {
     const p = initial || blankPerson();
     return {
@@ -70,6 +76,8 @@ export function PersonForm({
   }
   return (
     <section
+      ref={editorRef}
+      style={{ scrollMarginTop: '6rem' }}
       className="paper-panel person-editor"
       aria-label={initial ? 'Sửa hồ sơ' : 'Thêm hồ sơ'}
     >
@@ -89,6 +97,7 @@ export function PersonForm({
           <label>
             Tên hiển thị
             <input
+              ref={nameRef}
               value={fields.name}
               onChange={(e) => change('name', e.target.value)}
               required

@@ -35,26 +35,22 @@ import {
   type Role,
 } from './service';
 export type WorkspaceSection = 'all' | 'genealogy' | 'calendar' | 'members';
-const sectionMeta: Record<WorkspaceSection, { eyebrow: string; title: string; intro: string }> = {
+const sectionMeta: Record<WorkspaceSection, { eyebrow: string; title: string }> = {
   all: {
     eyebrow: 'MỘT NƠI ĐỂ CÙNG GÌN GIỮ',
     title: 'Dòng họ của tôi',
-    intro: 'Tạo mái nhà chung, mời người thân và cùng nhau chăm chút gia phả.',
   },
   genealogy: {
     eyebrow: 'CỘI NGUỒN CÁC THẾ HỆ',
     title: 'Gia phả dòng họ',
-    intro: 'Lưu giữ hồ sơ người thân, kết nối quan hệ gia đình và tra cứu sơ đồ cây các thế hệ.',
   },
   calendar: {
     eyebrow: 'CÙNG NHAU GHI NHỚ',
     title: 'Lịch giỗ & Sự kiện',
-    intro: 'Theo dõi ngày giỗ âm dương hàng năm, phân công chủ sự và gửi thiệp mời sum họp.',
   },
   members: {
     eyebrow: 'MÁI NHÀ CHUNG',
     title: 'Thành viên & Phân quyền',
-    intro: 'Quản lý thành viên trong dòng họ, gửi lời mời và xét duyệt yêu cầu tham gia.',
   },
 };
 export default function WorkspacePage({ section = 'all' }: { section?: WorkspaceSection }) {
@@ -68,7 +64,6 @@ export default function WorkspacePage({ section = 'all' }: { section?: Workspace
     <section className="workspace">
       <p className="eyebrow">{meta.eyebrow}</p>
       <h1>{meta.title}</h1>
-      <p className="page-intro">{meta.intro}</p>
       {!session.ready ? (
         <p role="status">Đang kiểm tra đăng nhập…</p>
       ) : session.user ? (
@@ -89,6 +84,7 @@ function SignedIn({ user, section }: { user: User; section: WorkspaceSection }) 
     setMine((current) => current?.filter((m) => m.clanId !== clanId) ?? []);
   }, []);
   const [error, setError] = useState('');
+  const [retryKey, setRetryKey] = useState(0);
   const [chosen, setChosenState] = useState(
     () => sessionStorage.getItem('active-clan:' + user.uid) || '',
   );
@@ -107,13 +103,14 @@ function SignedIn({ user, section }: { user: User; section: WorkspaceSection }) 
         (members) => {
           setMine(members);
           setVerifiedGeneration(generation);
+          setError('');
         },
         (e) => {
           setMine([]);
           setError(friendlyError(e));
         },
       ),
-    [user.uid, generation],
+    [user.uid, generation, retryKey],
   );
   async function create(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -136,7 +133,7 @@ function SignedIn({ user, section }: { user: User; section: WorkspaceSection }) 
   return (
     <>
       {!online && <OfflineViewer uid={user.uid} />}
-      {online && verifiedGeneration !== generation && (
+      {online && !error && verifiedGeneration !== generation && (
         <p role="status">Đang xác minh quyền truy cập…</p>
       )}
       <div className="session-bar">
@@ -153,9 +150,20 @@ function SignedIn({ user, section }: { user: User; section: WorkspaceSection }) 
         </button>
       </div>
       {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
+        <div className="form-error" role="alert">
+          <p>{error}</p>
+          <button
+            type="button"
+            className="button secondary"
+            style={{ marginTop: '8px' }}
+            onClick={() => {
+              setError('');
+              setRetryKey((k) => k + 1);
+            }}
+          >
+            Tải lại dữ liệu
+          </button>
+        </div>
       )}
       <div
         hidden={!online || verifiedGeneration !== generation}
@@ -446,10 +454,6 @@ function ClanPanel({
       {(section === 'all' || section === 'members') && (
         <>
           <h3 className="members-heading">Thành viên dòng họ</h3>
-      <p className="subtle">
-        Chỉ hiển thị tên và vai trò trong dòng họ; email và thông tin đăng nhập không nằm trong danh
-        sách này.
-      </p>
       {error && (
         <p className="form-error" role="alert">
           {error}
@@ -539,10 +543,6 @@ function ClanPanel({
           </div>
         </section>
       )}
-      <p className="subtle">
-        Quyền quản trị độc lập với vai vế và hồ sơ gia phả. Người tạo có thể bàn giao quyền; gia phả
-        luôn cần ít nhất một quản trị viên.
-      </p>
       {lastAdmin && (
         <p className="notice" role="status">
           Bạn là quản trị viên cuối cùng. Hãy cấp quyền quản trị cho người khác trước khi hạ quyền

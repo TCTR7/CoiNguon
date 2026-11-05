@@ -2,6 +2,21 @@ import { GenealogyPage } from '../pages/GenealogyPage';
 import { test, expect } from '../../../common_setup/fixtures';
 import AxeBuilder from '@axe-core/playwright';
 
+test('show the person form in the viewport immediately after adding', async ({ page }) => {
+  await new GenealogyPage(page).setup();
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await page.getByRole('button', { name: 'Thêm người thân', exact: true }).click();
+    const name = page.getByLabel('Tên hiển thị', { exact: true });
+    await expect(name).toBeFocused();
+    await expect(name).toBeInViewport();
+    await expect(
+      page.getByRole('heading', { name: 'Thêm một người thân', exact: true }),
+    ).toBeInViewport();
+    await page.getByRole('button', { name: 'Hủy chỉnh sửa', exact: true }).click();
+    await expect(name).toHaveCount(0);
+  }
+});
+
 test('store partial dates, connect real family records and archive without cascading', async ({
   page,
 }) => {

@@ -182,6 +182,7 @@ export const server = createServer(async (req, res) => {
     )(uid, payload);
     res.end(JSON.stringify(result));
   } catch (e) {
+    console.error('API Error:', e);
     const error =
       e instanceof ApiError
         ? e
