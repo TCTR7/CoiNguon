@@ -107,8 +107,7 @@ function ManagerPanel({ clanId, event }: { clanId: string; event: MemorialEvent 
         người có link có thể chuyển tiếp, vì vậy hãy gửi đúng người đại diện.
       </p>
       <p className="subtle">
-        Bản local, chỉ dùng dữ liệu giả. Link hết hạn 7 ngày sau giờ tổ chức hiện tại. Chia sẻ thủ
-        công; ứng dụng chưa gửi tin nhắn.
+        Link hết hạn 7 ngày sau giờ tổ chức hiện tại. Chia sẻ thủ công; ứng dụng chưa gửi tin nhắn.
       </p>
       {error && (
         <p role="alert" className="form-error">

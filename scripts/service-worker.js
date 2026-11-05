@@ -26,7 +26,6 @@ self.addEventListener('fetch', (event) => {
         '/gia-pha',
         '/lich-gio',
         '/thanh-vien',
-        '/thiep-moi',
       ].includes(url.pathname) && !url.search;
     event.respondWith(
       fetch(req).catch(async () => {

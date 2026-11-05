@@ -32,7 +32,7 @@ export function AccountGate({ user, children }: { user: User; children: ReactNod
     <>
       <details className="paper-panel" hidden={!online} open={!account}>
         <summary>{account ? 'Tài khoản và số điện thoại' : 'Hoàn tất tài khoản'}</summary>
-        <p>Đăng nhập: {user.email}. Chỉ dùng dữ liệu giả trong môi trường thử.</p>
+        <p>Đăng nhập: {user.email}</p>
         <p className="subtle">
           Số điện thoại bắt buộc để nhận lời mời. Số tự khai, chưa xác minh quyền sở hữu; không gửi
           SMS.

@@ -253,6 +253,8 @@ export function friendlyError(error: unknown) {
     return 'Bạn đã đóng đăng nhập Google. Có thể thử lại khi sẵn sàng.';
   if (code === 'auth/popup-blocked')
     return 'Trình duyệt đang chặn cửa sổ đăng nhập. Hãy cho phép popup hoặc mở bằng trình duyệt hệ thống.';
+  if (code === 'auth/configuration-not-found')
+    return 'Chưa cấu hình Google Sign-In trên Firebase Console (Authentication > Sign-in method > Google).';
   if (code === 'auth/user-mismatch')
     return 'Hãy chọn đúng tài khoản Google đang đăng nhập để xác nhận đổi số.';
   if (code === 'permission-denied')
@@ -266,6 +268,8 @@ export function friendlyError(error: unknown) {
   )
     return 'Email hoặc mật khẩu chưa đúng.';
   if (code === 'auth/network-request-failed' || code === 'unavailable')
-    return 'Chưa kết nối được môi trường thử. Hãy khởi động npm run emulators và thử lại.';
+    return useFirebaseEmulators
+      ? 'Chưa kết nối được môi trường thử. Hãy khởi động npm run emulators và thử lại.'
+      : 'Chưa kết nối được dịch vụ. Vui lòng kiểm tra kết nối mạng và thử lại.';
   return error instanceof Error ? error.message : 'Chưa thực hiện được. Vui lòng thử lại.';
 }

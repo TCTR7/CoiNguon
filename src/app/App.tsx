@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import { onAuthStateChanged, type User } from 'firebase/auth';
 import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import {
   ArrowUpRight,
@@ -10,24 +11,23 @@ import {
   Users,
   X,
 } from 'lucide-react';
+import { auth } from '../shared/firebase/client';
 import { PwaBanner } from '../features/preparedness/PwaBanner';
 import { InstallApp } from '../features/preparedness/InstallApp';
 import HomePage from '../features/home/HomePage';
-import PeoplePage from '../features/people/PeoplePage';
-import ProfilePage from '../features/people/ProfilePage';
-import CalendarPage from '../features/events/CalendarPage';
-import InvitationPage from '../features/events/InvitationPage';
-import MembersPage from '../features/members/MembersPage';
+
 const GuestInvitationPage = lazy(() => import('../features/invitations/GuestInvitationPage'));
 const JoinPage = lazy(() => import('../features/joining/JoinPage'));
 const OfflinePage = lazy(() => import('../features/preparedness/OfflinePage'));
 const WorkspacePage = lazy(() => import('../features/workspace/WorkspacePage'));
+
 const navigation = [
   { path: '/', label: 'Tổng quan', icon: Home },
   { path: '/gia-pha', label: 'Gia phả', icon: BookOpen },
   { path: '/lich-gio', label: 'Lịch giỗ', icon: CalendarDays },
   { path: '/thanh-vien', label: 'Thành viên', icon: Users },
 ];
+
 export default function App() {
   const location = useLocation();
   const guest = location.pathname === '/loi-moi';
@@ -35,6 +35,10 @@ export default function App() {
   const previousPath = useRef(location.pathname);
   const dialog = useRef<HTMLDialogElement>(null);
   const [largeText, setLargeText] = useState(false);
+  const [user, setUser] = useState<User | null>(auth.currentUser);
+
+  useEffect(() => onAuthStateChanged(auth, setUser), []);
+
   useEffect(() => {
     if (previousPath.current !== location.pathname) {
       previousPath.current = location.pathname;
@@ -42,6 +46,7 @@ export default function App() {
       main.current?.focus();
     }
   }, [location.pathname]);
+
   return (
     <div className={largeText ? 'app large-text' : 'app'}>
       <a
@@ -77,7 +82,7 @@ export default function App() {
           <button
             className="account-button"
             onClick={() => dialog.current?.showModal()}
-            aria-label="Mở cài đặt bản dùng thử"
+            aria-label="Mở cài đặt hiển thị"
           >
             <span className="account-avatar">Aa</span>
             <span>Cài đặt</span>
@@ -90,13 +95,12 @@ export default function App() {
           <div className="context-bar">
             <span>
               <span className="status-dot" />{' '}
-              {['/dong-ho', '/tham-gia', '/ngoai-tuyen'].includes(location.pathname)
-                ? 'Môi trường thử local'
-                : 'Gia đình họ Trần · Mẫu'}{' '}
-              <span className="context-divider">/</span> Nhà của chúng ta
+              {user ? user.displayName || user.email : 'Không gian gia phả riêng tư'}{' '}
+              <span className="context-divider">/</span>{' '}
+              {user ? 'Đã đăng nhập' : 'Dành cho mọi gia đình'}
             </span>
             <Link className="demo-label workspace-entry" to="/dong-ho">
-              Vào dòng họ của tôi →
+              {user ? 'Dòng họ của tôi →' : 'Đăng nhập / Tạo dòng họ →'}
             </Link>
           </div>
         )}
@@ -116,7 +120,31 @@ export default function App() {
               path="/dong-ho"
               element={
                 <Suspense fallback={<p role="status">Đang mở dòng họ…</p>}>
-                  <WorkspacePage />
+                  <WorkspacePage section="all" />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/gia-pha"
+              element={
+                <Suspense fallback={<p role="status">Đang mở gia phả…</p>}>
+                  <WorkspacePage section="genealogy" />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/lich-gio"
+              element={
+                <Suspense fallback={<p role="status">Đang mở lịch giỗ…</p>}>
+                  <WorkspacePage section="calendar" />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/thanh-vien"
+              element={
+                <Suspense fallback={<p role="status">Đang mở thành viên…</p>}>
+                  <WorkspacePage section="members" />
                 </Suspense>
               }
             />
@@ -136,11 +164,6 @@ export default function App() {
                 </Suspense>
               }
             />
-            <Route path="/gia-pha" element={<PeoplePage />} />
-            <Route path="/gia-pha/:personId" element={<ProfilePage />} />
-            <Route path="/lich-gio" element={<CalendarPage />} />
-            <Route path="/thiep-moi" element={<InvitationPage />} />
-            <Route path="/thanh-vien" element={<MembersPage />} />
             <Route
               path="*"
               element={
@@ -160,8 +183,8 @@ export default function App() {
           </span>
           <span>Gìn giữ hôm nay, trao lại ngày mai.</span>
           {!guest && (
-            <Link to="/gia-pha">
-              Về với gia đình <ArrowUpRight size={15} />
+            <Link to="/dong-ho">
+              Vào dòng họ của tôi <ArrowUpRight size={15} />
             </Link>
           )}
         </footer>
@@ -197,7 +220,7 @@ export default function App() {
           />
         </label>
         <p className="subtle">
-          Bản mẫu dùng dữ liệu giả. Các thay đổi hiển thị chỉ áp dụng trong phiên hiện tại.
+          Các thay đổi hiển thị chỉ áp dụng trong phiên hiện tại.
         </p>
         <button className="button primary full-width" onClick={() => dialog.current?.close()}>
           Xong

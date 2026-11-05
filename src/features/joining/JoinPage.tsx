@@ -66,7 +66,6 @@ export default function JoinPage() {
           Gửi lời giới thiệu để quản trị viên nhận ra bạn. Gia phả chỉ mở sau khi yêu cầu được
           duyệt.
         </p>
-        <p className="subtle">Bản thử trên máy này — chỉ dùng thông tin giả.</p>
       </div>
       {error ? (
         <div className="notice" role="alert">

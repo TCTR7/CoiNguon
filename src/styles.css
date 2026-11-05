@@ -624,7 +624,7 @@ input[type='checkbox'] {
 }
 .tone-1 {
   background: #e9dbcb;
-  color: #815d42;
+  color: #65452e;
 }
 .tone-2 {
   background: #dce3da;
@@ -632,7 +632,7 @@ input[type='checkbox'] {
 }
 .tone-3 {
   background: #e5d7cd;
-  color: #835143;
+  color: #6d3f33;
 }
 .closing-note {
   display: flex;
@@ -2362,9 +2362,22 @@ a.person-list-item:hover {
     font-size: 1rem;
     line-height: 1.65;
   }
+  .home-page .welcome > div {
+    min-width: 0;
+  }
   .home-page .welcome .button {
     width: 100%;
+    max-width: 100%;
+    flex-wrap: wrap;
+    text-align: center;
     justify-content: center;
+  }
+  .home-page h1,
+  .home-page h2,
+  .home-shortcuts a span,
+  .person-preview strong,
+  .person-preview small {
+    overflow-wrap: anywhere;
   }
   .home-page .hero-visual,
   .home-page .family-note,
@@ -2396,7 +2409,10 @@ a.person-list-item:hover {
     gap: 6px;
   }
   .home-page .section-heading .text-link {
-    max-width: none;
+    max-width: 100%;
+    flex-shrink: 1;
+    min-width: 0;
+    flex-wrap: wrap;
     font-size: 1rem;
     min-height: 44px;
     text-align: left;
@@ -2451,5 +2467,7 @@ a.person-list-item:hover {
     max-width: none;
     width: 100%;
     justify-content: center;
+    text-align: center;
+    overflow-wrap: anywhere;
   }
 }

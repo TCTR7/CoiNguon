@@ -10,9 +10,9 @@ import { PhoneInvites } from './PhoneInvites';
 import { CalendarPanel } from '../anniversaries/CalendarPanel';
 import GenealogyPanel from '../genealogy/GenealogyPanel';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { onAuthStateChanged, type User } from 'firebase/auth';
-import { ArrowRight, Check, Copy, LogOut, Plus, ShieldCheck, UserPlus, Users } from 'lucide-react';
+import { Check, Copy, LogOut, Plus, ShieldCheck, UserPlus, Users } from 'lucide-react';
 import { auth } from '../../shared/firebase/client';
 import {
   acceptInvitation,
@@ -34,27 +34,46 @@ import {
   type Membership,
   type Role,
 } from './service';
-export default function WorkspacePage() {
+export type WorkspaceSection = 'all' | 'genealogy' | 'calendar' | 'members';
+const sectionMeta: Record<WorkspaceSection, { eyebrow: string; title: string; intro: string }> = {
+  all: {
+    eyebrow: 'MỘT NƠI ĐỂ CÙNG GÌN GIỮ',
+    title: 'Dòng họ của tôi',
+    intro: 'Tạo mái nhà chung, mời người thân và cùng nhau chăm chút gia phả.',
+  },
+  genealogy: {
+    eyebrow: 'CỘI NGUỒN CÁC THẾ HỆ',
+    title: 'Gia phả dòng họ',
+    intro: 'Lưu giữ hồ sơ người thân, kết nối quan hệ gia đình và tra cứu sơ đồ cây các thế hệ.',
+  },
+  calendar: {
+    eyebrow: 'CÙNG NHAU GHI NHỚ',
+    title: 'Lịch giỗ & Sự kiện',
+    intro: 'Theo dõi ngày giỗ âm dương hàng năm, phân công chủ sự và gửi thiệp mời sum họp.',
+  },
+  members: {
+    eyebrow: 'MÁI NHÀ CHUNG',
+    title: 'Thành viên & Phân quyền',
+    intro: 'Quản lý thành viên trong dòng họ, gửi lời mời và xét duyệt yêu cầu tham gia.',
+  },
+};
+export default function WorkspacePage({ section = 'all' }: { section?: WorkspaceSection }) {
   const [session, setSession] = useState<{ ready: boolean; user: User | null }>({
     ready: false,
     user: null,
   });
   useEffect(() => onAuthStateChanged(auth, (user) => setSession({ ready: true, user })), []);
+  const meta = sectionMeta[section];
   return (
     <section className="workspace">
-      <p className="eyebrow">MỘT NƠI ĐỂ CÙNG GÌN GIỮ</p>
-      <h1>Dòng họ của tôi</h1>
-      <p className="page-intro">
-        Tạo mái nhà chung, mời người thân và cùng nhau chăm chút gia phả.
-      </p>
-      <div className="notice">
-        Môi trường thử trên máy này. Chỉ dùng tên và email giả; chưa kết nối dữ liệu gia đình thật.
-      </div>
+      <p className="eyebrow">{meta.eyebrow}</p>
+      <h1>{meta.title}</h1>
+      <p className="page-intro">{meta.intro}</p>
       {!session.ready ? (
         <p role="status">Đang kiểm tra đăng nhập…</p>
       ) : session.user ? (
         <AccountGate key={session.user.uid} user={session.user}>
-          <SignedIn user={session.user} />
+          <SignedIn user={session.user} section={section} />
         </AccountGate>
       ) : (
         <AuthForm />
@@ -62,7 +81,7 @@ export default function WorkspacePage() {
     </section>
   );
 }
-function SignedIn({ user }: { user: User }) {
+function SignedIn({ user, section }: { user: User; section: WorkspaceSection }) {
   const { online, generation } = useConnectivity();
   const [verifiedGeneration, setVerifiedGeneration] = useState(-1);
   const [mine, setMine] = useState<Membership[] | null>(null);
@@ -122,8 +141,7 @@ function SignedIn({ user }: { user: User }) {
       )}
       <div className="session-bar">
         <span>
-          <ShieldCheck size={19} /> {user.displayName || user.email}{' '}
-          <span className="subtle">· Tài khoản thử</span>
+          <ShieldCheck size={19} /> {user.displayName || user.email}
         </span>
         <button
           className="text-link"
@@ -154,7 +172,7 @@ function SignedIn({ user }: { user: User }) {
             onClose={() => setParams({})}
           />
         )}
-        <PhoneInvites />
+        {(section === 'all' || section === 'members' || !selected) && <PhoneInvites />}
         <div className="clan-controls">
           <label>
             Dòng họ đang xem
@@ -199,6 +217,7 @@ function SignedIn({ user }: { user: User }) {
             key={selected.clanId + '_' + selected.role}
             membership={selected}
             onAccessLost={onAccessLost}
+            section={section}
           />
         ) : (
           <div className="empty-state">
@@ -207,8 +226,12 @@ function SignedIn({ user }: { user: User }) {
             <p>Tạo dòng họ đầu tiên hoặc kiểm tra lời mời theo số điện thoại của bạn.</p>
           </div>
         )}
-        <MyJoinRequests uid={user.uid} />
-        <JoinByCode />
+        {(section === 'all' || section === 'members' || !selected) && (
+          <>
+            <MyJoinRequests uid={user.uid} />
+            <JoinByCode />
+          </>
+        )}
       </div>
     </>
   );
@@ -355,9 +378,11 @@ function AcceptInvite({
 function ClanPanel({
   membership,
   onAccessLost,
+  section,
 }: {
   membership: Membership;
   onAccessLost: (clanId: string) => void;
+  section: WorkspaceSection;
 }) {
   const [clan, setClan] = useState<Clan | null>(null);
   const [members, setMembers] = useState<Membership[] | null>(null);
@@ -407,12 +432,20 @@ function ClanPanel({
         </div>
         <span className="tag green">{members?.length ?? '…'} thành viên</span>
       </div>
-      <DataPanel membership={membership} />
-      <RemindersPanel membership={membership} />
-      <GenealogyPanel membership={membership} onAccessLost={onAccessLost} />
-      {admin && <PhoneInvites clanId={membership.clanId} />}
-      <CalendarPanel membership={membership} members={members || []} onAccessLost={onAccessLost} />
-      <h3 className="members-heading">Thành viên dòng họ</h3>
+      {section === 'all' && <DataPanel membership={membership} />}
+      {(section === 'all' || section === 'calendar') && <RemindersPanel membership={membership} />}
+      {(section === 'all' || section === 'genealogy') && (
+        <GenealogyPanel membership={membership} onAccessLost={onAccessLost} />
+      )}
+      {(section === 'all' || section === 'members') && admin && (
+        <PhoneInvites clanId={membership.clanId} />
+      )}
+      {(section === 'all' || section === 'calendar') && (
+        <CalendarPanel membership={membership} members={members || []} onAccessLost={onAccessLost} />
+      )}
+      {(section === 'all' || section === 'members') && (
+        <>
+          <h3 className="members-heading">Thành viên dòng họ</h3>
       <p className="subtle">
         Chỉ hiển thị tên và vai trò trong dòng họ; email và thông tin đăng nhập không nằm trong danh
         sách này.
@@ -553,22 +586,18 @@ function ClanPanel({
           </div>
         </section>
       )}
-      {admin && clan ? (
-        <>
-          <JoinManager key={clan.id + '_join'} clanId={clan.id} />
-          <InviteManager key={clan.id} clan={clan} />
+          {admin && clan ? (
+            <>
+              <JoinManager key={clan.id + '_join'} clanId={clan.id} />
+              <InviteManager key={clan.id} clan={clan} />
+            </>
+          ) : (
+            <p className="notice">
+              <ShieldCheck size={20} /> Chỉ quản trị viên có thể mời người thân và thay đổi vai trò.
+            </p>
+          )}
         </>
-      ) : (
-        <p className="notice">
-          <ShieldCheck size={20} /> Chỉ quản trị viên có thể mời người thân và thay đổi vai trò.
-        </p>
       )}
-      <div className="notice">
-        Lịch giỗ ở ngoài workspace vẫn là minh họa. Các trang gia phả mẫu cũng được giữ riêng.{' '}
-        <Link className="text-link" to="/gia-pha">
-          Xem gia phả mẫu <ArrowRight size={16} />
-        </Link>
-      </div>
     </>
   );
 }

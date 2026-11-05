@@ -1,28 +1,23 @@
 import { DemoPage } from '../pages/DemoPage';
 import AxeBuilder from '@axe-core/playwright';
 import { test, expect } from '../../../common_setup/fixtures';
-test('browse a family profile and replace the sample invitation response', async ({ page }) => {
+
+const publicRoutes = ['/', '/gia-pha', '/lich-gio', '/thanh-vien', '/dong-ho'];
+
+test('welcome overview has no static demo family profiles and navigates to workspace sections', async ({
+  page,
+}) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Gìn giữ cội nguồn');
-  await new DemoPage(page).browseProfile('tran van an', 'Trần Văn An 1932');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Trần Văn An');
-  await page.getByRole('link', { name: /Xem lễ giỗ sắp tới/ }).click();
-  await new DemoPage(page).respond(4);
-  await expect(page.getByRole('status')).toContainText('4 người lớn');
-  await page.getByRole('button', { name: 'Sửa phản hồi' }).click();
-  await new DemoPage(page).respond(3);
-  await expect(page.getByRole('status')).toContainText('3 người lớn');
+  await expect(page.getByText('Trần Văn An')).toHaveCount(0);
+  await page.locator('a[href="/gia-pha"]:visible').first().click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Gia phả dòng họ' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Tiếp tục với Google/ })).toBeVisible();
 });
-test('sample screens fit narrow displays and support larger text', async ({ page }) => {
+
+test('primary screens fit narrow displays and support larger text', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 740 });
-  for (const route of [
-    '/',
-    '/gia-pha',
-    '/gia-pha/tran-van-an',
-    '/lich-gio',
-    '/thiep-moi',
-    '/thanh-vien',
-  ]) {
+  for (const route of publicRoutes) {
     await page.goto(route);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     expect(
@@ -35,8 +30,8 @@ test('sample screens fit narrow displays and support larger text', async ({ page
   );
 });
 
-test('sample screens have no automated WCAG AA violations', async ({ page }) => {
-  for (const route of ['/', '/gia-pha', '/gia-pha/tran-van-an', '/thiep-moi']) {
+test('primary screens have no automated WCAG AA violations', async ({ page }) => {
+  for (const route of publicRoutes) {
     await page.goto(route);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await page.waitForLoadState('networkidle');
@@ -50,16 +45,12 @@ test('sample screens have no automated WCAG AA violations', async ({ page }) => 
 
 test('text enlarged to 200% reflows without page overflow', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 740 });
-  for (const route of [
-    '/',
-    '/gia-pha',
-    '/gia-pha/tran-van-an',
-    '/lich-gio',
-    '/thiep-moi',
-    '/thanh-vien',
-  ]) {
+  for (const route of publicRoutes) {
     await page.goto(route);
-    await page.addStyleTag({ content: ':root {font-size:200% !important}' });
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = '200%';
+    });
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
       route,

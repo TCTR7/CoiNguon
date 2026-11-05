@@ -65,7 +65,7 @@ function GuestContent({ token }: { token: string }) {
   return (
     <section className="guest-invitation-page">
       <p className="local-invitation-note">
-        Bản thử local — dùng thông tin giả. Không cần tạo tài khoản để phản hồi.
+        Không cần tạo tài khoản để phản hồi.
       </p>
       {error && (
         <div className="notice" role="alert">
