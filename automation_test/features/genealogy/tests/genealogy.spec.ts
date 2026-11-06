@@ -68,6 +68,7 @@ test('keep the draft when another tab edits the same person', async ({ page, con
   const email = await new GenealogyPage(page).setup();
   await new GenealogyPage(page).addPerson('Người mẫu trùng sửa');
   await page.getByRole('button', { name: 'Sửa hồ sơ', exact: true }).click();
+  await page.getByText('Thêm thông tin chi tiết', { exact: true }).click();
   await page.getByLabel('Tên khác / tên thường gọi', { exact: true }).fill('Thay đổi đang nhập');
   const second = await context.newPage();
   try {
@@ -80,6 +81,7 @@ test('keep the draft when another tab edits the same person', async ({ page, con
       .filter({ hasText: 'Người mẫu trùng sửa' })
       .click();
     await second.getByRole('button', { name: 'Sửa hồ sơ', exact: true }).click();
+    await second.getByText('Thêm thông tin chi tiết', { exact: true }).click();
     await second
       .getByLabel('Tên khác / tên thường gọi', { exact: true })
       .fill('Tên vừa được cập nhật');

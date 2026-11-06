@@ -6,6 +6,7 @@ import { formatFamilyDate, normalizedName, type FamilyPerson } from '../../share
 import { type Membership } from '../workspace/service';
 import { genealogyMutation, watchGenealogy, type GenealogyData } from './service';
 import { PersonForm } from './PersonForm';
+import { QuickAddActions, type RelativeKind } from './QuickAddActions';
 import { RelationshipPanel } from './RelationshipPanel';
 import { RequestForm, RequestsPanel } from './RequestsPanel';
 interface EditSession {
@@ -13,6 +14,7 @@ interface EditSession {
   initial?: FamilyPerson;
   version: number | null;
   key: string;
+  relative?: { kind: RelativeKind; personId: string };
 }
 export default function GenealogyPanel({
   membership,
@@ -76,6 +78,16 @@ export default function GenealogyPanel({
       key: crypto.randomUUID(),
     });
   }
+  function addRelative(personId: string, kind: RelativeKind) {
+    setError('');
+    setConfirm(null);
+    setEditing({
+      id: crypto.randomUUID(),
+      version: null,
+      key: crypto.randomUUID(),
+      relative: { kind, personId },
+    });
+  }
   async function act(action: string, payload: Record<string, unknown>) {
     setBusy(true);
     setError('');
@@ -120,6 +132,7 @@ export default function GenealogyPanel({
                 personId={editing.id}
                 version={editing.version}
                 existingPeople={people}
+                relative={editing.relative}
                 onSaved={(id) => {
                   setEditing(null);
                   setSelectedId(id);
@@ -189,6 +202,7 @@ export default function GenealogyPanel({
                 results={results}
                 selectedId={selectedId}
                 onChoose={setSelectedId}
+                onAddRelative={canEdit && !editing ? addRelative : undefined}
               />
             ) : (
               <>
@@ -249,6 +263,9 @@ export default function GenealogyPanel({
                       : 'THÔNG TIN CHƯA XÁC MINH'}
                 </p>
                 <h3>{selected.name}</h3>
+                {canEdit && !selected.archived && (
+                  <QuickAddActions onAdd={(kind) => addRelative(selected.id, kind)} />
+                )}
                 {selected.aliases && <p className="subtle">Tên khác: {selected.aliases}</p>}
                 <dl className="facts">
                   <div>

@@ -99,6 +99,47 @@ export async function mutate(uid: string, body: Record<string, unknown>) {
           if (existing.data()!.archived)
             throw new ApiError(409, 'Hãy khôi phục hồ sơ trước khi chỉnh sửa.');
         }
+        // A contextual creation is atomic: no profile remains if linking fails.
+        let newRelation: ReturnType<typeof validateRelationship> | undefined;
+        if (body.relationship !== undefined) {
+          if (action !== 'createPerson')
+            throw new ApiError(400, 'Chỉ nối quan hệ cùng lúc khi tạo hồ sơ mới.');
+          try {
+            newRelation = validateRelationship(body.relationship);
+          } catch (e) {
+            throw new ApiError(400, (e as Error).message);
+          }
+          if (newRelation.from !== id && newRelation.to !== id)
+            throw new ApiError(400, 'Quan hệ phải liên kết hồ sơ đang tạo.');
+          const targetId = validId(newRelation.from === id ? newRelation.to : newRelation.from);
+          const target = await tx.get(clan.collection('people').doc(targetId));
+          if (!target.exists || target.data()!.archived)
+            throw new ApiError(400, 'Người liên kết phải đang hoạt động trong cùng dòng họ.');
+          expectVersion(target.data()!, body.targetVersion);
+          if (newRelation.kind === 'spouse' && newRelation.from > newRelation.to)
+            [newRelation.from, newRelation.to] = [newRelation.to, newRelation.from];
+          const edges = await tx.get(clan.collection('relationships'));
+          if (
+            edges.docs.some((d) => {
+              const r = d.data();
+              return (
+                r.kind === newRelation!.kind &&
+                r.from === newRelation!.from &&
+                r.to === newRelation!.to
+              );
+            })
+          )
+            throw new ApiError(409, 'Quan hệ đã tồn tại. Hãy tải lại danh sách.');
+          if (
+            newRelation.kind === 'parent' &&
+            createsAncestryCycle(
+              edges.docs.map((d) => d.data() as FamilyRelationship),
+              newRelation.from,
+              newRelation.to,
+            )
+          )
+            throw new ApiError(409, 'Quan hệ này tạo vòng lặp tổ tiên.');
+        }
         const affectedEvents =
           existing.exists &&
           (!sameDate(existing.data()!.death, person.death) || person.lifeStatus !== 'deceased')
@@ -114,6 +155,16 @@ export async function mutate(uid: string, body: Record<string, unknown>) {
               reminderRevision: doc.data().reminderRevision + 1,
               reminderRevisionAt: FieldValue.serverTimestamp(),
             });
+        if (newRelation) {
+          const relationId = newRelation.kind + '_' + newRelation.from + '_' + newRelation.to;
+          tx.set(clan.collection('relationships').doc(relationId), {
+            ...newRelation,
+            version: 1,
+            archived: false,
+            updatedAt: FieldValue.serverTimestamp(),
+            updatedBy: uid,
+          });
+        }
         tx.set(ref, {
           ...person,
           version,

@@ -26,6 +26,7 @@ import {
   type TreeNode,
 } from './treeLayout';
 import './family-tree.css';
+import { QuickAddActions, type RelativeKind } from './QuickAddActions';
 
 type Pose = { x: number; y: number; scale: number };
 const boundedScale = (value: number) => Math.max(0.00001, Math.min(2, value));
@@ -35,12 +36,14 @@ export function FamilyTree({
   results,
   selectedId,
   onChoose,
+  onAddRelative,
 }: {
   people: FamilyPerson[];
   relationships: FamilyRelationship[];
   results: FamilyPerson[];
   selectedId: string;
   onChoose: (id: string) => void;
+  onAddRelative?: (personId: string, kind: RelativeKind) => void;
 }) {
   const index = useMemo(() => indexFamily(people, relationships), [people, relationships]);
   const [chosenRoot, setChosenRoot] = useState('');
@@ -458,6 +461,12 @@ export function FamilyTree({
         )}
       </aside>
       <section className="tree-stage" aria-label="Cây gia phả tương tác">
+        {onAddRelative && index.people.has(selectedId) && (
+          <div className="tree-control-bar">
+            <span>Thêm người thân của {index.people.get(selectedId)!.name}</span>
+            <QuickAddActions onAdd={(kind) => onAddRelative(selectedId, kind)} />
+          </div>
+        )}
         <div className="tree-control-bar">
           <label>
             Gốc nhánh đang xem

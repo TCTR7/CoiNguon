@@ -9,12 +9,14 @@ import {
   type PersonFields,
 } from '../../shared/domain/genealogy';
 import { genealogyMutation, GenealogyError } from './service';
+import type { RelativeKind } from './QuickAddActions';
 export function PersonForm({
   clanId,
   initial,
   personId,
   version,
   existingPeople,
+  relative,
   onSaved,
   onCancel,
   onReload,
@@ -24,12 +26,16 @@ export function PersonForm({
   personId: string;
   version: number | null;
   existingPeople: FamilyPerson[];
+  relative?: { kind: RelativeKind; personId: string };
   onSaved: (id: string) => void;
   onCancel: () => void;
   onReload?: () => void;
 }) {
   const editorRef = useRef<HTMLElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
+  const submitting = useRef(false);
+  const [relativeKind, setRelativeKind] = useState<RelativeKind>(relative?.kind ?? 'child');
+  const [targetId, setTargetId] = useState(relative?.personId ?? '');
   useEffect(() => {
     nameRef.current?.focus({ preventScroll: true });
     editorRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
@@ -56,21 +62,44 @@ export function PersonForm({
   }
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (submitting.current) return;
+    submitting.current = true;
     setError('');
     setConflict(false);
     setBusy(true);
     try {
       const person = validatePerson(fields);
+      const target = existingPeople.find((p) => p.id === targetId && !p.archived);
+      if (relative && !target) throw new Error('Chọn người thân đang hoạt động để liên kết.');
       const result = await genealogyMutation(
         clanId,
         version === null ? 'createPerson' : 'updatePerson',
-        { personId, version, person },
+        {
+          personId,
+          version,
+          person,
+          ...(relative && target
+            ? {
+                targetVersion: target.version,
+                relationship: {
+                  from: relativeKind === 'child' ? target.id : personId,
+                  to: relativeKind === 'child' ? personId : target.id,
+                  kind: relativeKind === 'spouse' ? 'spouse' : 'parent',
+                  parentType: 'biological',
+                  status: 'current',
+                  source: '',
+                  verified: false,
+                },
+              }
+            : {}),
+        },
       );
       onSaved(result.id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Chưa lưu được hồ sơ.');
       setConflict(e instanceof GenealogyError && e.status === 409);
     } finally {
+      submitting.current = false;
       setBusy(false);
     }
   }
@@ -93,92 +122,132 @@ export function PersonForm({
         </p>
       )}
       <form onSubmit={submit} noValidate className="workspace-form">
-        <div className="form-two-columns">
-          <label>
-            Tên hiển thị
-            <input
-              ref={nameRef}
-              value={fields.name}
-              onChange={(e) => change('name', e.target.value)}
-              required
-              maxLength={120}
-            />
-          </label>
-          <label>
-            Tên khác / tên thường gọi
-            <input
-              value={fields.aliases}
-              onChange={(e) => change('aliases', e.target.value)}
-              maxLength={200}
-            />
-          </label>
-          <label>
-            Tình trạng
-            <select
-              value={fields.lifeStatus}
-              onChange={(e) => change('lifeStatus', e.target.value as PersonFields['lifeStatus'])}
-            >
-              <option value="unknown">Chưa rõ</option>
-              <option value="living">Còn sống</option>
-              <option value="deceased">Đã mất</option>
-            </select>
-          </label>
-          <label>
-            Chi / nhánh gia đình
-            <input
-              value={fields.branch}
-              onChange={(e) => change('branch', e.target.value)}
-              maxLength={80}
-            />
-          </label>
-        </div>
-        <DateFields
-          title="Ngày sinh"
-          value={fields.birth}
-          onChange={(value) => change('birth', value)}
-        />
-        <DateFields
-          title="Ngày mất"
-          value={fields.death}
-          onChange={(value) => change('death', value)}
-        />
-        <p className="subtle">
-          Chỉ nhập ngày mất khi chọn Đã mất. Lịch âm được lưu nguyên gốc; chưa tự chuyển đổi.
-        </p>
-        <label>
-          Tiểu sử
-          <textarea
-            rows={4}
-            maxLength={5000}
-            value={fields.biography}
-            onChange={(e) => change('biography', e.target.value)}
-          />
-        </label>
-        <label>
-          Nguồn thông tin
-          <textarea
-            rows={2}
-            maxLength={500}
-            value={fields.source}
-            onChange={(e) => change('source', e.target.value)}
-            placeholder="Ví dụ: Gia phả viết tay, lời kể của người thân"
-          />
-        </label>
-        <label className="checkbox-label">
-          <input
-            type="checkbox"
-            checked={fields.verified}
-            onChange={(e) => change('verified', e.target.checked)}
-          />
-          Gia đình đã xác minh thông tin (cần ghi nguồn)
-        </label>
+        <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+          <div className="form-two-columns">
+            <label>
+              Tên hiển thị
+              <input
+                ref={nameRef}
+                value={fields.name}
+                onChange={(e) => change('name', e.target.value)}
+                required
+                maxLength={120}
+              />
+            </label>
+            <label>
+              Tình trạng
+              <select
+                value={fields.lifeStatus}
+                onChange={(e) => change('lifeStatus', e.target.value as PersonFields['lifeStatus'])}
+              >
+                <option value="unknown">Chưa rõ</option>
+                <option value="living">Còn sống</option>
+                <option value="deceased">Đã mất</option>
+              </select>
+            </label>
+          </div>
+          {relative && (
+            <div className="form-two-columns" data-testid="quick-add-context">
+              <label>
+                Mối quan hệ
+                <select
+                  aria-label="Mối quan hệ"
+                  value={relativeKind}
+                  onChange={(e) => setRelativeKind(e.target.value as RelativeKind)}
+                >
+                  <option value="parent">Là Cha / mẹ của</option>
+                  <option value="spouse">Là Vợ / chồng của</option>
+                  <option value="child">Là Con của</option>
+                </select>
+              </label>
+              <label>
+                Người liên kết
+                <select
+                  aria-label="Người liên kết"
+                  value={targetId}
+                  onChange={(e) => setTargetId(e.target.value)}
+                >
+                  <option value="">Chọn người thân</option>
+                  {existingPeople
+                    .filter((p) => !p.archived && p.id !== personId)
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            </div>
+          )}
+          <details data-testid="person-details">
+            <summary>Thêm thông tin chi tiết</summary>
+            <div className="workspace-form">
+              <label>
+                Tên khác / tên thường gọi
+                <input
+                  value={fields.aliases}
+                  onChange={(e) => change('aliases', e.target.value)}
+                  maxLength={200}
+                />
+              </label>
+              <label>
+                Chi / nhánh gia đình
+                <input
+                  value={fields.branch}
+                  onChange={(e) => change('branch', e.target.value)}
+                  maxLength={80}
+                />
+              </label>
+              <DateFields
+                title="Ngày sinh"
+                value={fields.birth}
+                onChange={(value) => change('birth', value)}
+              />
+              <DateFields
+                title="Ngày mất"
+                value={fields.death}
+                onChange={(value) => change('death', value)}
+              />
+              <p className="subtle">
+                Chỉ nhập ngày mất khi chọn Đã mất. Lịch âm được lưu nguyên gốc; chưa tự chuyển đổi.
+              </p>
+              <label>
+                Tiểu sử
+                <textarea
+                  rows={4}
+                  maxLength={5000}
+                  value={fields.biography}
+                  onChange={(e) => change('biography', e.target.value)}
+                />
+              </label>
+              <label>
+                Nguồn thông tin
+                <textarea
+                  rows={2}
+                  maxLength={500}
+                  value={fields.source}
+                  onChange={(e) => change('source', e.target.value)}
+                  placeholder="Ví dụ: Gia phả viết tay, lời kể của người thân"
+                />
+              </label>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={fields.verified}
+                  onChange={(e) => change('verified', e.target.checked)}
+                />
+                Gia đình đã xác minh thông tin (cần ghi nguồn)
+              </label>
+            </div>
+          </details>
+        </fieldset>
         {error && (
           <p className="form-error" role="alert">
             {error}
           </p>
         )}
-        {conflict && onReload && (
-          <button type="button" className="button secondary" onClick={onReload}>
+        {conflict && initial && onReload && (
+          <button type="button" className="button secondary" onClick={onReload} disabled={busy}>
             Tải bản mới — bỏ thay đổi đang nhập
           </button>
         )}

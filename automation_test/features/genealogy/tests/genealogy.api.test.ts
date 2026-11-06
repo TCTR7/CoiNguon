@@ -98,6 +98,70 @@ afterAll(async () => {
   server?.kill();
   await store.recursiveDelete(store.doc('clans/' + clanId));
 });
+it('atomically creates contextual relatives and rejects invalid or repeated requests', async () => {
+  await person('anchor');
+  const payload = (id: string, kind: 'parent' | 'spouse' | 'child') => ({
+    personId: id,
+    person: { ...blankPerson(), name: 'Người thân mẫu ' + id },
+    targetVersion: 1,
+    relationship: {
+      from: kind === 'child' ? 'anchor' : id,
+      to: kind === 'child' ? id : 'anchor',
+      kind: kind === 'spouse' ? 'spouse' : 'parent',
+      parentType: 'biological',
+      status: 'current',
+      source: '',
+      verified: false,
+    },
+  });
+  for (const kind of ['parent', 'spouse', 'child'] as const) {
+    const request = payload('new-' + kind, kind);
+    const results = await Promise.all([
+      call(editor, 'createPerson', request),
+      call(editor, 'createPerson', request),
+    ]);
+    expect(results.map((r) => r.status).sort()).toEqual([200, 409]);
+    const edges = await store.collection('clans/' + clanId + '/relationships').get();
+    const saved = edges.docs
+      .find((d) => d.data().from === request.personId || d.data().to === request.personId)!
+      .data();
+    const endpoints =
+      kind === 'spouse'
+        ? [request.relationship.from, request.relationship.to].sort()
+        : [request.relationship.from, request.relationship.to];
+    expect(saved).toMatchObject({
+      from: endpoints[0],
+      to: endpoints[1],
+      kind: request.relationship.kind,
+      version: 1,
+    });
+  }
+  const bad = payload('rejected', 'child');
+  for (const user of [member, outsider])
+    expect((await call(user, 'createPerson', bad)).status).toBe(403);
+  expect((await call(owner, 'createPerson', { ...bad, targetVersion: 99 })).status).toBe(409);
+  expect(
+    (
+      await call(owner, 'createPerson', {
+        ...bad,
+        relationship: { ...bad.relationship, from: 'missing' },
+      })
+    ).status,
+  ).toBe(400);
+  expect(
+    (
+      await call(owner, 'createPerson', {
+        ...bad,
+        relationship: { ...bad.relationship, to: 'unrelated' },
+      })
+    ).status,
+  ).toBe(400);
+  await store.doc('clans/' + clanId + '/people/anchor').update({ archived: true });
+  expect((await call(owner, 'createPerson', bad)).status).toBe(400);
+  expect((await store.doc('clans/' + clanId + '/people/rejected').get()).exists).toBe(false);
+  expect((await store.collection('clans/' + clanId + '/relationships').get()).size).toBe(3);
+  expect((await store.collection('clans/' + clanId + '/people').get()).size).toBe(4);
+});
 it('requires a valid token and current clan membership for direct API calls', async () => {
   expect((await call(null, 'createPerson')).status).toBe(401);
   expect((await call(outsider, 'createPerson')).status).toBe(403);

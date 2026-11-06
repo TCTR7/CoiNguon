@@ -16,6 +16,7 @@ test('exports/restores separately, reloads offline read-only and clears private 
   await new WorkspacePage(page).createClan(clan);
   await page.getByRole('button', { name: 'Thêm người thân', exact: true }).click();
   await page.getByLabel('Tên hiển thị', { exact: true }).fill('Người mẫu ngoại tuyến');
+  await page.getByText('Thêm thông tin chi tiết', { exact: true }).click();
   await page.getByLabel('Năm sinh', { exact: true }).fill('1932');
   await page.getByRole('button', { name: 'Lưu hồ sơ', exact: true }).click();
   await expect(page.locator('.genealogy-list')).toContainText('Người mẫu ngoại tuyến');

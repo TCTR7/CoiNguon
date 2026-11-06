@@ -15,6 +15,7 @@ export class InvitationPage {
     await page.getByRole('button', { name: 'Thêm người thân', exact: true }).click();
     await page.getByLabel('Tên hiển thị', { exact: true }).fill('Hồ sơ riêng không công bố');
     await page.getByRole('combobox', { name: 'Tình trạng', exact: true }).selectOption('deceased');
+    await page.getByText('Thêm thông tin chi tiết', { exact: true }).click();
     await page.getByRole('combobox', { name: 'Lịch ngày mất', exact: true }).selectOption('solar');
     await page.getByLabel('Ngày mất', { exact: true }).fill('1');
     await page.getByLabel('Tháng mất', { exact: true }).fill('1');
