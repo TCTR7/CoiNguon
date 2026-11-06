@@ -6,8 +6,10 @@ tự suy đoán còn sống/đã mất. Không thêm trường vào Person hoặ
 
 ## Contract
 
-`createPerson` nhận thêm `relationship` tùy chọn (đúng schema Relationship hiện có)
-và `targetVersion` là phiên bản người liên kết. Một đầu quan hệ phải là `personId`
+`createPerson` nhận `initialRelation?: { targetId, role: parent | child | spouse, parentType?, status? }`
+(vai trò là người đang tạo so với người được chọn). Giữ tương thích `relationship`
+tùy chọn (đúng schema Relationship hiện có), không nhận đồng thời hai cách,
+`targetVersion` là phiên bản người liên kết (tùy chọn cho API `initialRelation`; UI luôn gửi). Một đầu quan hệ phải là `personId`
 đang tạo; đầu còn lại phải đang hoạt động trong cùng clan. Backend kiểm tra quyền
 editor/admin, version, vòng lặp và lưu cả hai trong cùng transaction. ID hồ sơ giữ
 nguyên khi thử lại, nên request lặp không tạo thêm hồ sơ hoặc quan hệ.
@@ -27,3 +29,6 @@ chức năng sẵn có. Không thêm trường ghi chú riêng: dùng tiểu s�
 Kiểm tra cả ba hướng quan hệ, đổi người liên kết, tên tối thiểu, thu gọn chi tiết,
 chống gửi lặp, giữ bản nháp khi lỗi; API kiểm tra rollback, version, quyền và clan.
 E2E chạy từng bài trên Chromium trước, rồi mới chạy bài đó trên mobile.
+
+Form tạo mới có người đang hoạt động hiển thị liên kết tùy chọn; để trống người liên kết
+thì chỉ tạo hồ sơ. `presetRelation` điền sẵn người và vai trò, có thể đổi hoặc bỏ chọn.

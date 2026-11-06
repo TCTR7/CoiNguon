@@ -1,3 +1,4 @@
+import { createServer } from 'node:net';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { beforeAll, beforeEach, afterAll, it, expect } from 'vitest';
 import { store } from '../../../../backend/service';
@@ -8,6 +9,7 @@ let server: ChildProcess,
   member: { uid: string; token: string },
   outsider: { uid: string; token: string };
 const clanId = 'api-genealogy-tests';
+let apiPort: number;
 async function account() {
   const response = await fetch(
     'http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo-key',
@@ -31,7 +33,7 @@ async function call(
   payload: Record<string, unknown> = {},
   clan = clanId,
 ) {
-  const response = await fetch('http://127.0.0.1:8787/api/genealogy', {
+  const response = await fetch('http://127.0.0.1:' + apiPort + '/api/genealogy', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -71,8 +73,15 @@ beforeAll(async () => {
     account(),
     account(),
   ]);
+  const probe = createServer();
+  await new Promise<void>((resolve) => probe.listen(0, '127.0.0.1', resolve));
+  apiPort = (probe.address() as { port: number }).port;
+  await new Promise<void>((resolve, reject) =>
+    probe.close((error) => (error ? reject(error) : resolve())),
+  );
   server = spawn(process.execPath, ['--experimental-strip-types', 'backend/server.ts'], {
     stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env, PORT: String(apiPort) },
   });
   await new Promise<void>((resolve, reject) => {
     server.stdout!.on('data', (chunk) => {
@@ -340,4 +349,80 @@ it('rechecks membership after revocation for every write', async () => {
   await person('a');
   await store.doc('memberships/' + clanId + '_' + editor.uid).delete();
   expect((await call(editor, 'archivePerson', { personId: 'a', version: 1 })).status).toBe(403);
+});
+
+it('atomically creates initialRelation in all directions and rolls back invalid links', async () => {
+  await person('anchor');
+  for (const role of ['parent', 'child', 'spouse'] as const) {
+    const id = 'initial-' + role;
+    const request = {
+      personId: id,
+      person: { ...blankPerson(), name: 'Người mẫu ' + role },
+      initialRelation: { targetId: 'anchor', role, parentType: 'adoptive', status: 'former' },
+    };
+    const results = await Promise.all([
+      call(editor, 'createPerson', request),
+      call(editor, 'createPerson', request),
+    ]);
+    expect(results.map((r) => r.status).sort()).toEqual([200, 409]);
+    const [from, to] =
+      role === 'child'
+        ? ['anchor', id]
+        : role === 'spouse'
+          ? ['anchor', id].sort()
+          : [id, 'anchor'];
+    const saved = await store
+      .doc(
+        'clans/' +
+          clanId +
+          '/relationships/' +
+          (role === 'spouse' ? 'spouse' : 'parent') +
+          '_' +
+          from +
+          '_' +
+          to,
+      )
+      .get();
+    expect(saved.data()).toMatchObject({
+      from,
+      to,
+      parentType: 'adoptive',
+      status: 'former',
+      version: 1,
+    });
+  }
+  for (const initialRelation of [
+    { targetId: 'missing', role: 'child' },
+    { targetId: 'rejected-initial', role: 'parent' },
+    { targetId: 'anchor', role: 'invalid' },
+    { targetId: 'anchor', role: ['child'] },
+    { targetId: 'anchor', role: 'parent', parentType: 'invalid' },
+    { targetId: 'anchor', role: 'spouse', status: 'invalid' },
+  ]) {
+    expect(
+      (
+        await call(owner, 'createPerson', {
+          personId: 'rejected-initial',
+          person: { ...blankPerson(), name: 'Mẫu lỗi' },
+          initialRelation,
+        })
+      ).status,
+    ).toBe(400);
+    expect((await store.doc('clans/' + clanId + '/people/rejected-initial').get()).exists).toBe(
+      false,
+    );
+  }
+  await store.doc('clans/' + clanId + '/people/anchor').update({ archived: true });
+  expect(
+    (
+      await call(owner, 'createPerson', {
+        personId: 'rejected-initial',
+        person: { ...blankPerson(), name: 'Mẫu lỗi' },
+        initialRelation: { targetId: 'anchor', role: 'child' },
+      })
+    ).status,
+  ).toBe(400);
+  expect((await store.doc('clans/' + clanId + '/people/rejected-initial').get()).exists).toBe(
+    false,
+  );
 });

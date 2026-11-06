@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import {
+  blankDate,
   blankPerson,
   formatFamilyDate,
   normalizedName,
@@ -17,6 +18,7 @@ export function PersonForm({
   version,
   existingPeople,
   relative,
+  presetRelation,
   onSaved,
   onCancel,
   onReload,
@@ -27,6 +29,7 @@ export function PersonForm({
   version: number | null;
   existingPeople: FamilyPerson[];
   relative?: { kind: RelativeKind; personId: string };
+  presetRelation?: { targetId: string; role: RelativeKind };
   onSaved: (id: string) => void;
   onCancel: () => void;
   onReload?: () => void;
@@ -34,8 +37,10 @@ export function PersonForm({
   const editorRef = useRef<HTMLElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const submitting = useRef(false);
-  const [relativeKind, setRelativeKind] = useState<RelativeKind>(relative?.kind ?? 'child');
-  const [targetId, setTargetId] = useState(relative?.personId ?? '');
+  const [relativeKind, setRelativeKind] = useState<RelativeKind>(
+    presetRelation?.role ?? relative?.kind ?? 'child',
+  );
+  const [targetId, setTargetId] = useState(presetRelation?.targetId ?? relative?.personId ?? '');
   useEffect(() => {
     nameRef.current?.focus({ preventScroll: true });
     editorRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
@@ -70,7 +75,8 @@ export function PersonForm({
     try {
       const person = validatePerson(fields);
       const target = existingPeople.find((p) => p.id === targetId && !p.archived);
-      if (relative && !target) throw new Error('Chọn người thân đang hoạt động để liên kết.');
+      if (version === null && targetId && !target)
+        throw new Error('Chọn người thân đang hoạt động để liên kết.');
       const result = await genealogyMutation(
         clanId,
         version === null ? 'createPerson' : 'updatePerson',
@@ -78,18 +84,22 @@ export function PersonForm({
           personId,
           version,
           person,
-          ...(relative && target
+          ...(version === null && target
             ? {
                 targetVersion: target.version,
-                relationship: {
-                  from: relativeKind === 'child' ? target.id : personId,
-                  to: relativeKind === 'child' ? personId : target.id,
-                  kind: relativeKind === 'spouse' ? 'spouse' : 'parent',
-                  parentType: 'biological',
-                  status: 'current',
-                  source: '',
-                  verified: false,
-                },
+                ...(relative && !presetRelation
+                  ? {
+                      relationship: {
+                        from: relativeKind === 'child' ? target.id : personId,
+                        to: relativeKind === 'child' ? personId : target.id,
+                        kind: relativeKind === 'spouse' ? 'spouse' : 'parent',
+                        parentType: 'biological',
+                        status: 'current',
+                        source: '',
+                        verified: false,
+                      },
+                    }
+                  : { initialRelation: { targetId: target.id, role: relativeKind } }),
               }
             : {}),
         },
@@ -138,7 +148,14 @@ export function PersonForm({
               Tình trạng
               <select
                 value={fields.lifeStatus}
-                onChange={(e) => change('lifeStatus', e.target.value as PersonFields['lifeStatus'])}
+                onChange={(e) => {
+                  const lifeStatus = e.target.value as PersonFields['lifeStatus'];
+                  setFields((previous) => ({
+                    ...previous,
+                    lifeStatus,
+                    death: lifeStatus === 'deceased' ? previous.death : blankDate(),
+                  }));
+                }}
               >
                 <option value="unknown">Chưa rõ</option>
                 <option value="living">Còn sống</option>
@@ -146,41 +163,57 @@ export function PersonForm({
               </select>
             </label>
           </div>
-          {relative && (
-            <div className="form-two-columns" data-testid="quick-add-context">
-              <label>
-                Mối quan hệ
-                <select
-                  aria-label="Mối quan hệ"
-                  value={relativeKind}
-                  onChange={(e) => setRelativeKind(e.target.value as RelativeKind)}
-                >
-                  <option value="parent">Là Cha / mẹ của</option>
-                  <option value="spouse">Là Vợ / chồng của</option>
-                  <option value="child">Là Con của</option>
-                </select>
-              </label>
-              <label>
-                Người liên kết
-                <select
-                  aria-label="Người liên kết"
-                  value={targetId}
-                  onChange={(e) => setTargetId(e.target.value)}
-                >
-                  <option value="">Chọn người thân</option>
-                  {existingPeople
-                    .filter((p) => !p.archived && p.id !== personId)
-                    .map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                </select>
-              </label>
+          {version === null && existingPeople.some((p) => !p.archived && p.id !== personId) && (
+            <div data-testid="quick-add-context">
+              <h4>Liên kết quan hệ ngay (không bắt buộc)</h4>
+              <div className="form-two-columns">
+                <label>
+                  Mối quan hệ
+                  <select
+                    aria-label="Mối quan hệ"
+                    value={relativeKind}
+                    onChange={(e) => setRelativeKind(e.target.value as RelativeKind)}
+                  >
+                    <option value="parent">Là Cha / mẹ của</option>
+                    <option value="spouse">Là Vợ / chồng của</option>
+                    <option value="child">Là Con của</option>
+                  </select>
+                </label>
+                <label>
+                  Người liên kết
+                  <select
+                    aria-label="Người liên kết"
+                    value={targetId}
+                    onChange={(e) => setTargetId(e.target.value)}
+                  >
+                    <option value="">Chọn người thân</option>
+                    {existingPeople
+                      .filter((p) => !p.archived && p.id !== personId)
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+              </div>
             </div>
           )}
-          <details data-testid="person-details">
-            <summary>Thêm thông tin chi tiết</summary>
+          <DateFields
+            title="Ngày sinh"
+            value={fields.birth}
+            onChange={(value) => change('birth', value)}
+          />
+          <small className="subtle">Ngày sinh không bắt buộc.</small>
+          {fields.lifeStatus === 'deceased' && (
+            <DateFields
+              title="Ngày mất"
+              value={fields.death}
+              onChange={(value) => change('death', value)}
+            />
+          )}
+          <details open={Boolean(initial)} data-testid="person-details">
+            <summary>Thông tin bổ sung (chi nhánh, tên gọi khác, tiểu sử — tùy chọn)</summary>
             <div className="workspace-form">
               <label>
                 Tên khác / tên thường gọi
@@ -198,19 +231,6 @@ export function PersonForm({
                   maxLength={80}
                 />
               </label>
-              <DateFields
-                title="Ngày sinh"
-                value={fields.birth}
-                onChange={(value) => change('birth', value)}
-              />
-              <DateFields
-                title="Ngày mất"
-                value={fields.death}
-                onChange={(value) => change('death', value)}
-              />
-              <p className="subtle">
-                Chỉ nhập ngày mất khi chọn Đã mất. Lịch âm được lưu nguyên gốc; chưa tự chuyển đổi.
-              </p>
               <label>
                 Tiểu sử
                 <textarea

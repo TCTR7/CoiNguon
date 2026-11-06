@@ -14,7 +14,7 @@ interface EditSession {
   initial?: FamilyPerson;
   version: number | null;
   key: string;
-  relative?: { kind: RelativeKind; personId: string };
+  presetRelation?: { targetId: string; role: RelativeKind };
 }
 export default function GenealogyPanel({
   membership,
@@ -85,7 +85,7 @@ export default function GenealogyPanel({
       id: crypto.randomUUID(),
       version: null,
       key: crypto.randomUUID(),
-      relative: { kind, personId },
+      presetRelation: { role: kind, targetId: personId },
     });
   }
   async function act(action: string, payload: Record<string, unknown>) {
@@ -132,7 +132,7 @@ export default function GenealogyPanel({
                 personId={editing.id}
                 version={editing.version}
                 existingPeople={people}
-                relative={editing.relative}
+                presetRelation={editing.presetRelation}
                 onSaved={(id) => {
                   setEditing(null);
                   setSelectedId(id);
@@ -249,6 +249,11 @@ export default function GenealogyPanel({
                         ? 'Thử đổi tên tìm kiếm, bộ lọc chi hoặc chế độ lưu trữ.'
                         : 'Ghi lại một cái tên, rồi nối những nhánh gia đình.'}
                     </p>
+                    {!people.length && canEdit && (
+                      <button type="button" className="button primary" onClick={() => edit()}>
+                        Thêm người thân đầu tiên
+                      </button>
+                    )}
                   </div>
                 )}
               </>

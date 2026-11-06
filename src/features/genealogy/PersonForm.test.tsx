@@ -100,3 +100,115 @@ it('changes the link target, blocks duplicate submits and preserves the draft on
   expect(screen.getByRole('button', { name: 'Lưu hồ sơ' })).toBeEnabled();
   expect(onSaved).not.toHaveBeenCalled();
 });
+
+it('shows optional birth fields in the main form and opens extra fields when editing', () => {
+  const props = {
+    clanId: 'clan',
+    personId: 'new',
+    version: null,
+    existingPeople: [],
+    onSaved: vi.fn(),
+    onCancel: vi.fn(),
+  };
+  const { rerender } = render(<PersonForm {...props} />);
+  expect(screen.getByLabelText('Tên hiển thị')).toHaveFocus();
+  expect(screen.getByLabelText('Năm sinh')).toBeVisible();
+  expect(screen.getByText('Ngày sinh không bắt buộc.')).toBeVisible();
+  expect(screen.queryByLabelText('Ngày mất')).not.toBeInTheDocument();
+  expect(screen.getByTestId('person-details')).not.toHaveAttribute('open');
+  rerender(<PersonForm {...props} initial={target} version={target.version} />);
+  expect(screen.getByTestId('person-details')).toHaveAttribute('open');
+  expect(screen.getByLabelText('Tên khác / tên thường gọi')).toBeVisible();
+});
+it.each(['unknown', 'living'] as const)(
+  'clears the entire death date when changing from deceased to %s',
+  async (lifeStatus) => {
+    const initial: FamilyPerson = {
+      ...target,
+      lifeStatus: 'deceased',
+      death: { calendar: 'lunar', day: 1, month: 4, year: 2020, leapMonth: true },
+    };
+    vi.mocked(genealogyMutation).mockResolvedValue({ id: initial.id });
+    const onSaved = vi.fn();
+    render(
+      <PersonForm
+        clanId="clan"
+        initial={initial}
+        personId={initial.id}
+        version={initial.version}
+        existingPeople={[]}
+        onSaved={onSaved}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText('Năm mất')).toHaveValue(2020);
+    fireEvent.change(screen.getByLabelText('Tình trạng'), { target: { value: lifeStatus } });
+    expect(screen.queryByLabelText('Ngày mất')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Tình trạng'), { target: { value: 'deceased' } });
+    expect(screen.getByLabelText('Năm mất')).toHaveValue(null);
+    expect(screen.getByLabelText('Lịch ngày mất')).toHaveValue('solar');
+    fireEvent.change(screen.getByLabelText('Tình trạng'), { target: { value: lifeStatus } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu hồ sơ' }));
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(initial.id));
+    expect(genealogyMutation).toHaveBeenCalledWith(
+      'clan',
+      'updatePerson',
+      expect.objectContaining({
+        person: expect.objectContaining({ lifeStatus, death: blankPerson().death }),
+      }),
+    );
+  },
+);
+
+it.each(['parent', 'child', 'spouse'] as const)(
+  'uses presetRelation for the new %s role',
+  async (role) => {
+    vi.mocked(genealogyMutation).mockResolvedValue({ id: 'new' });
+    render(
+      <PersonForm
+        clanId="clan"
+        personId="new"
+        version={null}
+        existingPeople={[target]}
+        presetRelation={{ targetId: target.id, role }}
+        onSaved={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Liên kết quan hệ ngay (không bắt buộc)')).toBeVisible();
+    expect(screen.getByLabelText('Mối quan hệ')).toHaveValue(role);
+    expect(screen.getByLabelText('Người liên kết')).toHaveValue('target');
+    fireEvent.change(screen.getByLabelText('Tên hiển thị'), { target: { value: 'Hồ sơ mẫu' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu hồ sơ' }));
+    await waitFor(() =>
+      expect(genealogyMutation).toHaveBeenCalledWith(
+        'clan',
+        'createPerson',
+        expect.objectContaining({
+          initialRelation: { targetId: 'target', role },
+          targetVersion: 2,
+        }),
+      ),
+    );
+  },
+);
+it('allows optional linking from ordinary creation and clearing the preset', async () => {
+  vi.mocked(genealogyMutation).mockResolvedValue({ id: 'new' });
+  render(
+    <PersonForm
+      clanId="clan"
+      personId="new"
+      version={null}
+      existingPeople={[target]}
+      onSaved={vi.fn()}
+      onCancel={vi.fn()}
+    />,
+  );
+  expect(screen.getByTestId('quick-add-context')).toBeVisible();
+  fireEvent.change(screen.getByLabelText('Người liên kết'), { target: { value: 'target' } });
+  fireEvent.change(screen.getByLabelText('Người liên kết'), { target: { value: '' } });
+  fireEvent.change(screen.getByLabelText('Tên hiển thị'), { target: { value: 'Hồ sơ mẫu' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Lưu hồ sơ' }));
+  await waitFor(() => expect(genealogyMutation).toHaveBeenCalledTimes(1));
+  expect(vi.mocked(genealogyMutation).mock.calls[0][2]).not.toHaveProperty('initialRelation');
+});

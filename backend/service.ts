@@ -101,11 +101,32 @@ export async function mutate(uid: string, body: Record<string, unknown>) {
         }
         // A contextual creation is atomic: no profile remains if linking fails.
         let newRelation: ReturnType<typeof validateRelationship> | undefined;
-        if (body.relationship !== undefined) {
+        if (body.initialRelation !== undefined && body.relationship !== undefined)
+          throw new ApiError(400, 'Chỉ chọn một cách liên kết quan hệ ban đầu.');
+        let relationship = body.relationship;
+        if (body.initialRelation !== undefined) {
+          const initial = body.initialRelation;
+          if (!initial || typeof initial !== 'object' || Array.isArray(initial))
+            throw new ApiError(400, 'Thông tin quan hệ ban đầu không hợp lệ.');
+          const relation = initial as Record<string, unknown>;
+          if (relation.role !== 'parent' && relation.role !== 'child' && relation.role !== 'spouse')
+            throw new ApiError(400, 'Vai trò quan hệ không hợp lệ.');
+          const targetId = validId(relation.targetId);
+          relationship = {
+            from: relation.role === 'child' ? targetId : id,
+            to: relation.role === 'child' ? id : targetId,
+            kind: relation.role === 'spouse' ? 'spouse' : 'parent',
+            parentType: relation.parentType === undefined ? 'biological' : relation.parentType,
+            status: relation.status === undefined ? 'current' : relation.status,
+            source: '',
+            verified: false,
+          };
+        }
+        if (relationship !== undefined) {
           if (action !== 'createPerson')
             throw new ApiError(400, 'Chỉ nối quan hệ cùng lúc khi tạo hồ sơ mới.');
           try {
-            newRelation = validateRelationship(body.relationship);
+            newRelation = validateRelationship(relationship);
           } catch (e) {
             throw new ApiError(400, (e as Error).message);
           }
@@ -115,7 +136,8 @@ export async function mutate(uid: string, body: Record<string, unknown>) {
           const target = await tx.get(clan.collection('people').doc(targetId));
           if (!target.exists || target.data()!.archived)
             throw new ApiError(400, 'Người liên kết phải đang hoạt động trong cùng dòng họ.');
-          expectVersion(target.data()!, body.targetVersion);
+          if (body.relationship !== undefined || body.targetVersion !== undefined)
+            expectVersion(target.data()!, body.targetVersion);
           if (newRelation.kind === 'spouse' && newRelation.from > newRelation.to)
             [newRelation.from, newRelation.to] = [newRelation.to, newRelation.from];
           const edges = await tx.get(clan.collection('relationships'));

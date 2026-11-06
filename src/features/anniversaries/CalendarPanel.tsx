@@ -168,10 +168,6 @@ export function CalendarPanel({
             <div className="paper-panel">
               <p className="eyebrow">01 · NẾP NHÀ</p>
               <h3>Quy tắc giỗ hằng năm</h3>
-              <p>
-                Lịch âm Việt Nam · UTC+7 · đối chiếu 1900–2099. Năm âm có thể kết thúc vào đầu năm
-                dương kế tiếp.
-              </p>
               {rule && (
                 <p className="notice">
                   {anniversaryCandidate(rule, year).explanation}

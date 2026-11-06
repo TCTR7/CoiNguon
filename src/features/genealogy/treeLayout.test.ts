@@ -31,6 +31,81 @@ const edge = (
   ...extra,
 });
 describe('dynamic family layout', () => {
+  it('chooses the father before two unverified children and shows the family from a child', () => {
+    const index = indexFamily(['child1', 'child2', 'father'].map(person), [
+      edge('father', 'child1', { verified: false }),
+      edge('father', 'child2', { verified: false }),
+    ]);
+    expect(index.defaultRoot).toBe('father');
+    expect(index.parents.get('child1')).toEqual([index.relationships[0]]);
+    for (const root of ['father', 'child1']) {
+      const layout = layoutFamily(index, root, 2, new Set(), new Set());
+      expect(layout.nodes).toHaveLength(3);
+      expect(layout.byId.get('child1')?.row).toBe(layout.byId.get('child2')?.row);
+      expect(layout.byId.get('father')!.row + 1).toBe(layout.byId.get('child1')?.row);
+      expect(layout.byId.get('child2')?.generation).toBeNull();
+      expect(layout.edges).toHaveLength(2);
+    }
+  });
+  it('shows ancestors, siblings, spouses, descendants and disconnected active families in small trees', () => {
+    const ids = [
+      'child',
+      'sibling',
+      'father',
+      'mother',
+      'grandfather',
+      'grandmother',
+      'spouse',
+      'son',
+      'grandchild',
+      'other',
+      'otherChild',
+      'alone',
+    ];
+    const index = indexFamily(
+      [...ids.map(person), { ...person('archived'), archived: true }],
+      [
+        edge('father', 'child'),
+        edge('mother', 'child'),
+        edge('father', 'sibling'),
+        edge('mother', 'sibling'),
+        edge('grandfather', 'father'),
+        edge('grandmother', 'father'),
+        edge('child', 'spouse', { kind: 'spouse' }),
+        edge('child', 'son'),
+        edge('son', 'grandchild'),
+        edge('other', 'otherChild'),
+        edge('child', 'archived'),
+      ],
+    );
+    const layout = layoutFamily(index, 'child', 0, new Set(), new Set(['child', 'father']));
+    expect(new Set(layout.nodes.map((node) => node.id))).toEqual(new Set(ids));
+    expect(layout.byId.get('grandfather')!.row + 1).toBe(layout.byId.get('father')?.row);
+    expect(layout.byId.get('father')!.row + 1).toBe(layout.byId.get('child')?.row);
+    expect(layout.byId.get('child')?.row).toBe(layout.byId.get('sibling')?.row);
+    expect(layout.byId.get('child')?.row).toBe(layout.byId.get('spouse')?.row);
+    expect(layout.byId.get('grandchild')?.generation).toBe(3);
+    expect(layout.byId.get('father')?.generation).toBeNull();
+  });
+  it('terminates with a deterministic fallback for unverified parent cycles', () => {
+    const index = indexFamily(['a', 'b'].map(person), [
+      edge('a', 'b', { verified: false }),
+      edge('b', 'a', { verified: false }),
+    ]);
+    expect(index.defaultRoot).toBe('a');
+    const layout = layoutFamily(index, index.defaultRoot, 2, new Set(), new Set());
+    expect(layout.nodes).toHaveLength(2);
+    expect(layout.byId.get('b')?.generation).toBeNull();
+    expect(Number.isFinite(layout.height)).toBe(true);
+  });
+  it.each([100, 101])('limits the full family overview to 100 active profiles (%i)', (count) => {
+    const index = indexFamily(
+      Array.from({ length: count }, (_, i) => person('p' + i)),
+      [edge('p0', 'p1')],
+    );
+    const layout = layoutFamily(index, 'p1', 0, new Set(), new Set());
+    expect(layout.nodes).toHaveLength(count === 100 ? 100 : 1);
+  });
   it.each([250, 5000, 20000])(
     'keeps all %i profiles reachable and bounds DOM candidates to the viewport',
     (count) => {
@@ -71,8 +146,11 @@ describe('dynamic family layout', () => {
     expect(layout.byId.get('p4999')?.generation).toBe(5000);
     expect(descendantLayers('p0', relations).get('p4999')).toEqual(new Set([4999]));
   });
-  it('opens arbitrary branches and collapses without losing shared records or data', () => {
-    const people = ['a', 'b', 'c', 'd'].map(person),
+  it('opens arbitrary branches and collapses in large trees without losing shared records or data', () => {
+    const people = [
+        ...['a', 'b', 'c', 'd'].map(person),
+        ...Array.from({ length: 97 }, (_, i) => person('extra' + i)),
+      ],
       relations = [edge('a', 'b'), edge('b', 'c'), edge('c', 'd')];
     const index = indexFamily(people, relations);
     expect(layoutFamily(index, 'a', 1, new Set(), new Set()).nodes.map((n) => n.id)).toEqual([
@@ -84,7 +162,7 @@ describe('dynamic family layout', () => {
       'a',
       'b',
     ]);
-    expect(index.people.size).toBe(4);
+    expect(index.people.size).toBe(101);
   });
   it('never infers a parent edge from a marriage, keeps former spouses/adoption and marks unknown depths', () => {
     const people = ['a', 'b', 'c', 'd', 'e'].map(person);
@@ -96,7 +174,8 @@ describe('dynamic family layout', () => {
     ];
     const layout = layoutFamily(indexFamily(people, relations), 'a', 3, new Set(), new Set());
     expect(layout.byId.has('b')).toBe(true);
-    expect(layout.byId.has('e')).toBe(false);
+    expect(layout.byId.has('e')).toBe(true);
+    expect(layout.byId.get('e')?.generation).toBeNull();
     expect(layout.byId.get('b')?.generation).toBeNull();
     expect(layout.byId.get('d')?.generation).toBeNull();
     expect(layout.edges.some((e) => e.relationship.from === 'b' && e.relationship.to === 'c')).toBe(

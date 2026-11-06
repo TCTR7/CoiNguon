@@ -19,7 +19,6 @@ export class GenealogyPage {
     await page.getByRole('button', { name: 'Thêm người thân', exact: true }).click();
     await page.getByLabel('Tên hiển thị', { exact: true }).fill(name);
     if (year) {
-      await page.getByText('Thêm thông tin chi tiết', { exact: true }).click();
       await page.getByLabel('Năm sinh', { exact: true }).fill(year);
     }
     await page.getByRole('button', { name: 'Lưu hồ sơ', exact: true }).click();

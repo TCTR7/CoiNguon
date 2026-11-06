@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import type { FamilyPerson, FamilyRelationship } from '../../shared/domain/genealogy';
 import { genealogyMutation } from './service';
 export function RelationshipPanel({
@@ -141,7 +141,9 @@ function RelationshipForm({
   onSaved: () => void;
 }) {
   const [target, setTarget] = useState('');
-  const [direction, setDirection] = useState('parent');
+  const [direction, setDirection] = useState('');
+  const targetName = people.find((p) => p.id === target)?.name || 'người được chọn';
+  const submitting = useRef(false);
   const [parentType, setParentType] = useState(existing?.parentType || 'biological');
   const [status, setStatus] = useState(existing?.status || 'current');
   const [source, setSource] = useState(existing?.source || '');
@@ -151,10 +153,13 @@ function RelationshipForm({
   const kind = existing?.kind || (direction === 'spouse' ? 'spouse' : 'parent');
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (submitting.current) return;
+    submitting.current = true;
     setBusy(true);
     setError('');
     try {
       if (!existing && !target) throw new Error('Chọn người thân cần liên kết.');
+      if (!existing && !direction) throw new Error('Chọn mối quan hệ trước khi ghi quan hệ.');
       const relation = existing
         ? { ...existing, parentType, status, source, verified }
         : {
@@ -182,6 +187,7 @@ function RelationshipForm({
       });
       if (!existing) {
         setTarget('');
+        setDirection('');
         setSource('');
         setVerified(false);
       }
@@ -189,6 +195,7 @@ function RelationshipForm({
     } catch (e) {
       setError((e as Error).message);
     } finally {
+      submitting.current = false;
       setBusy(false);
     }
   }
@@ -212,9 +219,16 @@ function RelationshipForm({
           <label>
             Mối quan hệ với {person.name}
             <select value={direction} onChange={(e) => setDirection(e.target.value)}>
-              <option value="parent">Người đang xem là cha/mẹ của người được chọn</option>
-              <option value="child">Người đang xem là con của người được chọn</option>
-              <option value="spouse">Hai người là vợ/chồng</option>
+              <option value="">Chọn mối quan hệ…</option>
+              <option value="parent">
+                {person.name} là CHA / MẸ của {targetName}
+              </option>
+              <option value="child">
+                {person.name} là CON của {targetName}
+              </option>
+              <option value="spouse">
+                {person.name} và {targetName} là VỢ / CHỒNG
+              </option>
             </select>
           </label>
         </>

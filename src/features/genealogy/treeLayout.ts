@@ -26,6 +26,7 @@ export interface TreeEdge {
 export interface TreeIndex {
   people: Map<string, FamilyPerson>;
   children: Map<string, FamilyRelationship[]>;
+  parents: Map<string, FamilyRelationship[]>;
   spouses: Map<string, FamilyRelationship[]>;
   relationships: FamilyRelationship[];
   defaultRoot: string;
@@ -36,6 +37,7 @@ export function indexFamily(
 ): TreeIndex {
   const byId = new Map(people.filter((p) => !p.archived).map((p) => [p.id, p]));
   const children = new Map<string, FamilyRelationship[]>(),
+    parents = new Map<string, FamilyRelationship[]>(),
     spouses = new Map<string, FamilyRelationship[]>();
   const edges = relationships.filter((e) => !e.archived && byId.has(e.from) && byId.has(e.to));
   const hasParent = new Set<string>();
@@ -47,7 +49,8 @@ export function indexFamily(
   for (const e of edges) {
     if (e.kind === 'parent') {
       append(children, e.from, e);
-      if (e.verified) hasParent.add(e.to);
+      append(parents, e.to, e);
+      hasParent.add(e.to);
     } else {
       append(spouses, e.from, e);
       append(spouses, e.to, e);
@@ -57,7 +60,7 @@ export function indexFamily(
     people.find((p) => byId.has(p.id) && !hasParent.has(p.id))?.id ||
     byId.keys().next().value ||
     '';
-  return { people: byId, children, spouses, relationships: edges, defaultRoot: root };
+  return { people: byId, children, parents, spouses, relationships: edges, defaultRoot: root };
 }
 export interface TreeLayout {
   nodes: TreeNode[];
@@ -77,6 +80,7 @@ export function layoutFamily(
   if (!index.people.has(root))
     return { nodes: [], byId: new Map(), edges: [], rows: [], width: 0, height: 0 };
   const levels = descendantLayers(root, index.relationships);
+  const familyOverview = index.people.size <= 100;
   const rows: string[][] = [],
     placed = new Map<string, number>(),
     processed = new Set<string>();
@@ -84,10 +88,14 @@ export function layoutFamily(
   const place = (id: string, row: number) => {
     if (!placed.has(id)) {
       placed.set(id, row);
-      (rows[row] ||= []).push(id);
+      if (!familyOverview) (rows[row] ||= []).push(id);
     }
   };
-  for (let i = 0; i < queue.length; i++) {
+  for (let i = 0; i < queue.length || (familyOverview && processed.size < index.people.size); i++) {
+    if (i === queue.length) {
+      const next = [...index.people.keys()].find((id) => !processed.has(id))!;
+      queue.push([next, 0]);
+    }
     const [id, row] = queue[i];
     if (processed.has(id)) continue;
     processed.add(id);
@@ -95,11 +103,21 @@ export function layoutFamily(
     for (const edge of index.spouses.get(id) || []) {
       const spouse = edge.from === id ? edge.to : edge.from;
       place(spouse, row);
-      // A displayed spouse does not imply parenthood or automatically include their other children.
-      if (expanded.has(spouse) && !processed.has(spouse)) queue.push([spouse, placed.get(spouse)!]);
+      // Large trees only traverse a spouse’s other children on explicit expansion.
+      if ((familyOverview || expanded.has(spouse)) && !processed.has(spouse))
+        queue.push([spouse, placed.get(spouse)!]);
     }
-    if (collapsed.has(id) || (row >= depth && !expanded.has(id))) continue;
-    for (const edge of index.children.get(id) || []) queue.push([edge.to, row + 1]);
+    if (familyOverview) {
+      for (const edge of index.parents.get(id) || []) queue.push([edge.from, row - 1]);
+    }
+    if (familyOverview || (!collapsed.has(id) && (row < depth || expanded.has(id)))) {
+      for (const edge of index.children.get(id) || []) queue.push([edge.to, row + 1]);
+    }
+  }
+  if (familyOverview) {
+    // Ancestors may occupy negative rows; shift only presentation coordinates.
+    const firstRow = Math.min(...placed.values());
+    for (const [id, row] of placed) (rows[row - firstRow] ||= []).push(id);
   }
   const width =
     rows.reduce(
@@ -122,7 +140,7 @@ export function layoutFamily(
         row,
         generation,
         children: (index.children.get(id) || []).length,
-        expanded: !collapsed.has(id) && (row < depth || expanded.has(id)),
+        expanded: familyOverview || (!collapsed.has(id) && (row < depth || expanded.has(id))),
       };
       nodes.push(node);
       byId.set(id, node);

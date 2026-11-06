@@ -12,6 +12,8 @@ import {
   Plus,
   LocateFixed,
   Maximize2,
+  Maximize,
+  Minimize,
   ArrowDown,
   ChevronLeft,
   ChevronRight,
@@ -58,8 +60,17 @@ export function FamilyTree({
     () => layoutFamily(index, root, depth, expanded, collapsed),
     [index, root, depth, expanded, collapsed],
   );
+  const container = useRef<HTMLDivElement>(null);
   const viewport = useRef<HTMLDivElement>(null),
     canvas = useRef<HTMLCanvasElement>(null);
+  const [fullscreenMode, setFullscreenMode] = useState<'none' | 'native' | 'fallback'>('none');
+  const isFullscreen = fullscreenMode !== 'none';
+  const [fullscreenPending, setFullscreenPending] = useState(false);
+  const [fullscreenError, setFullscreenError] = useState('');
+  const fullscreenBusy = useRef(false);
+  const mounted = useRef(false);
+  const fullscreenButton = useRef<HTMLButtonElement>(null);
+  const restoreFullscreenFocus = useRef(false);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [pose, setPose] = useState<Pose>({ x: 0, y: 0, scale: 1 });
   const poseRef = useRef(pose);
@@ -76,6 +87,7 @@ export function FamilyTree({
   } | null>(null);
   const initialized = useRef('');
   const pendingFocus = useRef('');
+  const previousNodeCount = useRef(0);
   const anchor = useRef<{ root: string; x: number; y: number } | null>(null);
   const page = Math.min(resultPage, Math.max(0, Math.ceil(results.length / 20) - 1));
   const rootChoices = [
@@ -154,10 +166,106 @@ export function FamilyTree({
     });
   }
   useEffect(() => {
+    mounted.current = true;
+    const onFullscreenChange = () => {
+      setFullscreenMode((mode) =>
+        document.fullscreenElement === container.current
+          ? 'native'
+          : mode === 'native'
+            ? 'none'
+            : mode,
+      );
+      setFullscreenError('');
+    };
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => {
+      mounted.current = false;
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+    };
+  }, []);
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const bodyOverflow = document.body.style.overflow;
+    const htmlOverflow = document.documentElement.style.overflow;
+    restoreFullscreenFocus.current = true;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    viewport.current?.focus({ preventScroll: true });
+    return () => {
+      document.body.style.overflow = bodyOverflow;
+      document.documentElement.style.overflow = htmlOverflow;
+    };
+  }, [isFullscreen]);
+  useEffect(() => {
+    if (!isFullscreen && !fullscreenPending && restoreFullscreenFocus.current) {
+      fullscreenButton.current?.focus({ preventScroll: true });
+      restoreFullscreenFocus.current = false;
+    }
+  }, [isFullscreen, fullscreenPending]);
+  useEffect(() => {
+    if (fullscreenMode !== 'fallback') return;
+    const onKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setFullscreenMode('none');
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [fullscreenMode]);
+  async function toggleFullscreen() {
+    const element = container.current;
+    if (!element || fullscreenBusy.current) return false;
+    fullscreenBusy.current = true;
+    setFullscreenPending(true);
+    setFullscreenError('');
+    try {
+      if (!isFullscreen) {
+        if (element.requestFullscreen) {
+          try {
+            await element.requestFullscreen();
+            if (mounted.current) {
+              setFullscreenMode(document.fullscreenElement === element ? 'native' : 'none');
+            }
+            return true;
+          } catch {
+            // Browsers without fullscreen permission still get an expanded workspace.
+          }
+        }
+        if (mounted.current) setFullscreenMode('fallback');
+      } else {
+        if (document.fullscreenElement === element) await document.exitFullscreen();
+        if (mounted.current) setFullscreenMode('none');
+      }
+      return true;
+    } catch {
+      if (mounted.current) {
+        setFullscreenError('Chưa thể thu nhỏ toàn màn hình. Hãy thử lại hoặc nhấn Esc.');
+      }
+      return false;
+    } finally {
+      fullscreenBusy.current = false;
+      if (mounted.current) setFullscreenPending(false);
+    }
+  }
+  async function openOutsideTree(action: () => void) {
+    if (isFullscreen && !(await toggleFullscreen())) return;
+    action();
+  }
+  useEffect(() => {
     const element = viewport.current;
     if (!element) return;
+    let previousSize: { width: number; height: number } | undefined;
     const observer = new ResizeObserver((entries) => {
       const box = entries[0].contentRect;
+      if (!box.width || !box.height) return;
+      if (previousSize) {
+        const dx = (box.width - previousSize.width) / 2;
+        const dy = (box.height - previousSize.height) / 2;
+        setPose((previous) => ({ ...previous, x: previous.x + dx, y: previous.y + dy }));
+      }
+      previousSize = { width: box.width, height: box.height };
+      pointers.current.clear();
+      gesture.current = null;
       setSize({ width: box.width, height: box.height });
     });
     observer.observe(element);
@@ -209,6 +317,13 @@ export function FamilyTree({
         });
       }
       initialized.current = root;
+    } else if (
+      index.people.size <= 100 &&
+      layout.nodes.length > previousNodeCount.current &&
+      layout.width * poseRef.current.scale > size.width &&
+      !pendingFocus.current
+    ) {
+      fit();
     } else if (anchor.current?.root === root) {
       const dx = anchor.current.x - node.x,
         dy = anchor.current.y - node.y;
@@ -219,6 +334,7 @@ export function FamilyTree({
           y: previous.y + dy * previous.scale,
         }));
     }
+    previousNodeCount.current = layout.nodes.length;
     anchor.current = { root, x: node.x, y: node.y };
   }, [root, layout, size.width, size.height]);
   useEffect(() => {
@@ -418,7 +534,10 @@ export function FamilyTree({
   }
   if (!root) return <p className="notice">Thêm hồ sơ để bắt đầu xem sơ đồ nhánh.</p>;
   return (
-    <div className="family-tree-workspace">
+    <div
+      ref={container}
+      className={'family-tree-workspace' + (isFullscreen ? ' is-fullscreen' : '')}
+    >
       <aside className="tree-directory" aria-label="Danh sách định vị trong cây">
         <h3>Người trong gia phả</h3>
         <p className="subtle">
@@ -464,7 +583,9 @@ export function FamilyTree({
         {onAddRelative && index.people.has(selectedId) && (
           <div className="tree-control-bar">
             <span>Thêm người thân của {index.people.get(selectedId)!.name}</span>
-            <QuickAddActions onAdd={(kind) => onAddRelative(selectedId, kind)} />
+            <QuickAddActions
+              onAdd={(kind) => void openOutsideTree(() => onAddRelative(selectedId, kind))}
+            />
           </div>
         )}
         <div className="tree-control-bar">
@@ -483,27 +604,41 @@ export function FamilyTree({
             </select>
           </label>
           <div className="tree-actions">
-            <button onClick={fit}>
+            <button type="button" onClick={fit}>
               <Maximize2 size={17} /> Vừa khung
             </button>
-            <button onClick={() => focusPerson(selectedId || root)}>
+            <button type="button" onClick={() => focusPerson(selectedId || root)}>
               <LocateFixed size={17} /> Về người đang chọn
+            </button>
+            <button
+              ref={fullscreenButton}
+              type="button"
+              onClick={() => void toggleFullscreen()}
+              disabled={fullscreenPending}
+              aria-busy={fullscreenPending}
+              aria-label={isFullscreen ? 'Thu nhỏ toàn màn hình' : 'Mở toàn màn hình'}
+              aria-pressed={isFullscreen}
+              data-testid="tree-fullscreen-button"
+            >
+              {isFullscreen ? <Minimize size={17} /> : <Maximize size={17} />}
+              {isFullscreen ? 'Thu nhỏ' : 'Toàn màn hình'}
             </button>
           </div>
         </div>
+        {fullscreenError && (
+          <p role="alert" className="notice">
+            {fullscreenError}
+          </p>
+        )}
         <p className="tree-caption">
           Nhánh {rootName} · {layout.nodes.length.toLocaleString('vi')}/
-          {index.people.size.toLocaleString('vi')} hồ sơ.{' '}
-          {overview
-            ? 'Đang xem toàn cảnh; chọn người ở danh sách để đọc rõ.'
-            : 'Chạm tên để mở hồ sơ; đổi gốc là thao tác riêng.'}
+          {index.people.size.toLocaleString('vi')} hồ sơ.
         </p>
         <div
           ref={viewport}
           className="family-tree-viewport"
           role="region"
           aria-label="Vùng sơ đồ gia phả, có thể kéo và phóng to"
-          aria-describedby="tree-navigation-help"
           tabIndex={0}
           onPointerDown={pointerDown}
           onPointerMove={pointerMove}
@@ -528,7 +663,7 @@ export function FamilyTree({
                   className="family-tree-person"
                   aria-label={'Xem hồ sơ ' + node.person.name}
                   aria-pressed={node.id === selectedId}
-                  onClick={() => onChoose(node.id)}
+                  onClick={() => void openOutsideTree(() => onChoose(node.id))}
                 >
                   <span className="avatar">{node.person.name.charAt(0)}</span>
                   <strong title={node.person.name}>{node.person.name}</strong>
@@ -591,21 +726,6 @@ export function FamilyTree({
             Thu về nhánh gần
           </button>
         </div>
-        <p id="tree-navigation-help" className="tree-help">
-          Kéo nền hoặc cuộn để di chuyển; Shift + cuộn để đi ngang; Ctrl + cuộn hoặc chụm hai ngón
-          để zoom. Bàn phím: mũi tên, +/−, Home. Danh sách luôn dùng được để tìm người.
-        </p>
-        <p className="tree-legend">
-          <span>━ Cha/mẹ–con</span>
-          <span>═ Con nuôi</span>
-          <span>┄ Chưa xác minh</span>
-          <span>Vợ/chồng: nối ngang, có nhãn nếu trước đây.</span>
-        </p>
-        <p className="subtle">
-          Chỉ quan hệ cha/mẹ–con đã xác minh được dùng tính thế hệ. Đường nối đi từ đúng hồ sơ
-          cha/mẹ; không tự nhận vợ/chồng là cha/mẹ của con. Thông tin quan hệ đầy đủ nằm trong hồ
-          sơ.
-        </p>
       </section>
     </div>
   );

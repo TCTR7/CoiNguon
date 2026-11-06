@@ -92,7 +92,7 @@
 .tree-actions,
 .tree-bottom-bar {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 8px;
   flex-wrap: wrap;
 }
@@ -228,21 +228,6 @@
   text-align: center;
   font-size: 0.9rem;
 }
-.tree-help,
-.tree-legend,
-.tree-stage > .subtle {
-  margin: 0;
-  padding: 10px 16px;
-  font-size: 0.9rem;
-  line-height: 1.8;
-}
-.tree-legend {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  border-top: 1px solid var(--line);
-  color: #485d40;
-}
 @media (max-width: 900px) {
   .family-tree-workspace {
     grid-template-columns: minmax(0, 1fr);
@@ -300,21 +285,93 @@
   .tree-bottom-bar {
     order: 2;
   }
-  .tree-help {
-    order: 3;
-  }
   .family-tree-viewport {
     order: 4;
     height: clamp(320px, 55dvh, 540px);
   }
-  .tree-legend {
-    order: 5;
-  }
-  .tree-stage > .subtle {
-    order: 6;
-  }
   .tree-zoom button {
     width: 56px;
     min-height: 48px;
+  }
+}
+
+.tree-actions button[aria-pressed='true'] {
+  background: #f3e8df;
+  border-color: #b98670;
+  color: #8c382b;
+}
+
+.family-tree-workspace:fullscreen,
+.family-tree-workspace.is-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  margin: 0;
+  padding: 16px;
+  background: var(--paper, #f8f5ed);
+  box-sizing: border-box;
+  align-items: stretch;
+  grid-template-rows: minmax(0, 1fr);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.family-tree-workspace:fullscreen .tree-directory,
+.family-tree-workspace.is-fullscreen .tree-directory {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.family-tree-workspace:fullscreen .tree-search-results,
+.family-tree-workspace.is-fullscreen .tree-search-results {
+  flex: 1;
+  max-height: none;
+  overflow-y: auto;
+}
+
+.family-tree-workspace:fullscreen .tree-stage,
+.family-tree-workspace.is-fullscreen .tree-stage {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.family-tree-workspace:fullscreen .tree-stage > :not(.family-tree-viewport),
+.family-tree-workspace.is-fullscreen .tree-stage > :not(.family-tree-viewport) {
+  flex-shrink: 0;
+}
+
+.family-tree-workspace:fullscreen .family-tree-viewport,
+.family-tree-workspace.is-fullscreen .family-tree-viewport {
+  flex: 1 0 160px;
+  height: auto;
+  min-height: 160px;
+}
+
+@media (max-width: 900px) {
+  .family-tree-workspace:fullscreen,
+  .family-tree-workspace.is-fullscreen {
+    padding: 8px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+  .family-tree-workspace:fullscreen .tree-directory,
+  .family-tree-workspace.is-fullscreen .tree-directory {
+    height: auto;
+    max-height: 20dvh;
+    overflow: auto;
+  }
+  .family-tree-workspace:fullscreen .tree-search-results,
+  .family-tree-workspace.is-fullscreen .tree-search-results {
+    flex: none;
   }
 }

@@ -68,7 +68,7 @@ test('keep the draft when another tab edits the same person', async ({ page, con
   const email = await new GenealogyPage(page).setup();
   await new GenealogyPage(page).addPerson('Người mẫu trùng sửa');
   await page.getByRole('button', { name: 'Sửa hồ sơ', exact: true }).click();
-  await page.getByText('Thêm thông tin chi tiết', { exact: true }).click();
+  await expect(page.getByTestId('person-details')).toHaveAttribute('open');
   await page.getByLabel('Tên khác / tên thường gọi', { exact: true }).fill('Thay đổi đang nhập');
   const second = await context.newPage();
   try {
@@ -81,7 +81,7 @@ test('keep the draft when another tab edits the same person', async ({ page, con
       .filter({ hasText: 'Người mẫu trùng sửa' })
       .click();
     await second.getByRole('button', { name: 'Sửa hồ sơ', exact: true }).click();
-    await second.getByText('Thêm thông tin chi tiết', { exact: true }).click();
+    await expect(second.getByTestId('person-details')).toHaveAttribute('open');
     await second
       .getByLabel('Tên khác / tên thường gọi', { exact: true })
       .fill('Tên vừa được cập nhật');
@@ -143,4 +143,49 @@ test('request a profile link and a correction with explicit admin review', async
     .fill('Đã xem xét nội dung góp ý');
   await page.getByRole('button', { name: 'Đánh dấu đã xử lý', exact: true }).click();
   await expect(page.locator('.requests-panel')).toContainText('Đã xử lý');
+});
+
+test('quick add presets all relative directions and ordinary creation can link immediately', async ({
+  page,
+}) => {
+  const genealogy = new GenealogyPage(page);
+  await genealogy.setup();
+  await genealogy.addPerson('Người gốc mẫu');
+  for (const [role, name] of [
+    ['parent', 'Cha mẹ mẫu'],
+    ['spouse', 'Bạn đời mẫu'],
+    ['child', 'Con mẫu'],
+  ] as const) {
+    await page.locator('.genealogy-list button').filter({ hasText: 'Người gốc mẫu' }).click();
+    await page
+      .locator('.family-person-detail')
+      .getByTestId('quick-add-' + role)
+      .click();
+    await expect(page.getByLabel('Mối quan hệ', { exact: true })).toHaveValue(role);
+    await expect(
+      page.getByLabel('Người liên kết', { exact: true }).locator('option:checked'),
+    ).toHaveText('Người gốc mẫu');
+    await page.getByLabel('Tên hiển thị', { exact: true }).fill(name);
+    await page.getByRole('button', { name: 'Lưu hồ sơ', exact: true }).click();
+    await expect(
+      page.locator('.family-person-detail').getByRole('heading', { name, exact: true }),
+    ).toBeVisible();
+    await expect(page.locator('.relationship-list')).toContainText('Người gốc mẫu');
+    await expect(page.locator('.relationship-list')).toContainText(
+      role === 'parent' ? 'Con' : role === 'child' ? 'Cha/mẹ' : 'Vợ/chồng',
+    );
+  }
+  await page.getByRole('button', { name: 'Thêm người thân', exact: true }).click();
+  await expect(page.getByText('Liên kết quan hệ ngay (không bắt buộc)')).toBeVisible();
+  await page.getByLabel('Người liên kết', { exact: true }).selectOption({ label: 'Người gốc mẫu' });
+  await page.getByLabel('Mối quan hệ', { exact: true }).selectOption('child');
+  await page.getByLabel('Tên hiển thị', { exact: true }).fill('Con thêm mẫu');
+  await page.getByRole('button', { name: 'Lưu hồ sơ', exact: true }).click();
+  await expect(
+    page
+      .locator('.family-person-detail')
+      .getByRole('heading', { name: 'Con thêm mẫu', exact: true }),
+  ).toBeVisible();
+  await expect(page.locator('.relationship-list')).toContainText('Cha/mẹ');
+  await expect(page.locator('.relationship-list')).toContainText('Người gốc mẫu');
 });
